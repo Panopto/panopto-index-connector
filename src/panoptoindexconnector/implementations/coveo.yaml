@@ -1,0 +1,47 @@
+#
+# Panopto index connector configuration file
+#
+
+
+# The address to your panopto site
+panopto_site_address: https://your.site.panopto.com
+
+# The oauth credentials to connect to the panopto API
+panopto_oauth_credentials:
+    username: myconnectoruser
+    password: mypassword
+    client_id: 123
+    client_secret: 456
+    grant_type: password
+
+# Your index integration target endpoint
+target_address: https://myindex.domain.local:4321
+
+# Your coveo engine username/password for the connector
+target_credentials:
+    username: mytargetuser
+    password: mytargetpassword
+
+# The name of your implementation
+target_implementation: coveo_implementation
+
+# Define the mapping from Panopto fields to the target field names
+field_mapping:
+
+    # Id in panopto maps to permanentid in coveo
+    Id: permanentid
+
+    # Top level data
+    Info:
+        Title: title
+        Language: language
+        Url: uri
+        ThumbnailUrl: img.uri.thumbnail
+
+    # Content data
+    Metadata:
+        Summary: summary_text
+        MachineTranscription: machine_transcription_text
+        HumanTranscription: human_transcription_text
+        ScreenCapture: screen_capture_text
+        Presentation: presentation_text

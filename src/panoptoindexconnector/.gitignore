@@ -1,0 +1,6 @@
+
+*.yaml
+!attivio.yaml
+!coveo.yaml
+!debug.yaml
+!template.yaml
