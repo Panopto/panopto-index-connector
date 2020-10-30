@@ -39,6 +39,10 @@ To install the Panopto Index Connector, follow these steps
 3. Setup the connector by running the following from the cloned directory `<myfolder>`
   - `python setup.py install`
 
+## Setup API Access
+
+Configure a panopto user, e.g. "connector", which will be used for access to the API. Grant the user an API key if you know how to do so. The user does not need any other permissions. Contact Panopto Support to have them enable your API access and authorize this user. We will be removing the need to contact Panopto Support in a future release.
+
 ## The Panopto APIs
 
 The panopto-index-connector leverages two Panopto endpoints -- the first one returns a list of video and playlist ids which need updating, and the second returns the content. This is all handled in the core part of the connector and will not require any configuration from the user. However, in the case that a user needs to build a custom solution or customize an existing solution, it is important to know the structure of the content response. Content returned from the Panopto API has the following form:
