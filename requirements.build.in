@@ -1,0 +1,6 @@
+# Pyinstaller needs to get pinned <4.0 until 4.2 is released due to this bug:
+# https://github.com/pyinstaller/pyinstaller/pull/5354
+pyinstaller<4.0
+
+# This will use the current directory's dependencies i.e. the package dependencies from setup.py
+-e .
