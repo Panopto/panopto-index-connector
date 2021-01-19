@@ -9,3 +9,5 @@ This is the panopto python template module.
 This __init__.py file holds docstrings, imports, and marks the folder
 as a python module. Subfolders with this will be importable submodules.
 """
+
+import panoptoindexconnector.implementations  # noqa

@@ -13,26 +13,29 @@ def readme():
     with open('README.md') as readme_file:
         return readme_file.read()
 
+REQUIRES = [
+    'pyreadline',
+    'requests',
+    'ruamel.yaml<=15.66.0',
+]
 
 setup(
     name='panoptoindexconnector',
-    version='1.0.0',
+    version='1.0.1',
     author='Stephen Bianamara',
     author_email='sbianamara@panopto.com',
-    description=('A prototyping of the panopto search index connector'),
+    description=('A general application for connecting a panopto search index to an external source'),
     long_description=readme(),
-    keywords=['python', 'panopto', 'connector', 'attivio'],
+    keywords=['python', 'panopto', 'connector', 'attivio', 'coveo'],
 
-    install_requires=[
-        'requests',
-        'ruamel.yaml',
-    ],
+    install_requires=REQUIRES,
     package_data={
     },
+    # All packages found under src
     package_dir={'': 'src'},
+    # Use all packages under src
     packages=find_packages('src'),
-    setup_requires=[
-    ],
+    setup_requires=REQUIRES,
     tests_require=[
     ],
     entry_points={

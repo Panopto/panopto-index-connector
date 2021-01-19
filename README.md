@@ -31,6 +31,23 @@ This product will connect Panopto to your external search index. This can be don
 
 ## Installation
 
+### Method 1: From official exe (recommended for out of the box)
+If you do not need to add a or customize a connector's implementation, and you are running on Windows, you may use the officially published `panopto-connector.exe` in the releases tab. For other use cases, use methods 2 or 3.
+
+### Method 2: From built exe (recommended for customizing/adding implementations)
+If you need to add or customize an implementation (in a way that will not merge back to the public repository), then you will need to build your own executable. This can be done by working in a python3 environment and then running the following
+```
+git clone https://github.com/Panopto/panopto-index-connector.git <myfolder>
+cd <myfolder>
+pip install -e requirements.txt
+pip install -e requirements.build.txt
+python build_standalone.py
+```
+
+This will produce `dist\panopto-connector.exe` which may be copied to and run as a standalone application. Note that `build_standalone.py` will create a windows executable if run from a windows computer, and a linux executable if run from a linux computer.
+
+### Method 3: Install via easy_setup (recommended for hacking/developing)
+
 To install the Panopto Index Connector, follow these steps
 
 1. Install Python 3 (at least version 3.4)

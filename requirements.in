@@ -1,6 +1,7 @@
 coverage
 flake8
 mock
+pip-tools
 pycodestyle
 pyflakes
 pylint
