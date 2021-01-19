@@ -32,7 +32,7 @@ This product will connect Panopto to your external search index. This can be don
 ## Installation
 
 ### Method 1: From official exe (recommended for out of the box)
-If you do not need to add a or customize a connector's implementation, and you are running on Windows, you may use the officially published `panopto-connector.exe` in the releases tab. For other use cases, use methods 2 or 3.
+If you do not need to create or customize a connector's implementation, and you are running on Windows, you may use the officially published `panopto-connector.exe` in the [releases tab](https://github.com/Panopto/panopto-index-connector/releases/). For other use cases, use methods 2 or 3.
 
 ### Method 2: From built exe (recommended for customizing/adding implementations)
 If you need to add or customize an implementation (in a way that will not merge back to the public repository), then you will need to build your own executable. This can be done by working in a python3 environment and then running the following
