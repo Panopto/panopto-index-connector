@@ -32,17 +32,36 @@ def convert_to_target(panopto_content, field_mapping):
     raise NotImplementedError("This is only a template")
 
 
-def push_to_target(target_content, target_address, target_credentials, config):
+def push_to_target(target_content, config):
     """
     Implement this method to push converted content to the target
     """
+
+    # Values on the config file are the same as in the yaml configuration file
+    #
+    # config.field_mapping
+    # config.panopto_oauth_credentials
+    # config.panopto_site_address
+    # config.target_address
+    # config.target_credentials
+
+    # So your implementation might look like
+    # url = config.target_address + '/some/uri/path'
+    # auth = {'Authorization': 'Bearer ' + config.target_credentials['apikey']
+    # requests.put(url=url, auth=auth, json=target_content)
 
     raise NotImplementedError("This is only a template")
 
 
-def delete_from_target(video_id, target_address, target_credentials):
+def delete_from_target(video_id, config):
     """
     Implement this method to push converted content to the target
     """
+
+    # Same config as above.
+    # So your implementation might look like
+    # url = config.target_address + '/some/uri/path'
+    # auth = {'Authorization': 'Bearer ' + config.target_credentials['apikey']
+    # requests.put(url=url, auth=auth, json=target_content)
 
     raise NotImplementedError("This is only a template")

@@ -15,12 +15,13 @@ panopto_oauth_credentials:
     grant_type: password
 
 # Your index integration target endpoint
-target_address: https://myindex.domain.local:4321
+target_address: https://api.cloud.coveo.com
 
 # Your coveo engine username/password for the connector
 target_credentials:
-    username: mytargetuser
-    password: mytargetpassword
+    api_key: 00000000-0000-0000-0000-000000000000
+    organization: acoveoorganization
+    source: acoveoorganization-somethingorother
 
 # The name of your implementation
 target_implementation: coveo_implementation
@@ -36,12 +37,12 @@ field_mapping:
         Title: title
         Language: language
         Url: uri
-        ThumbnailUrl: img.uri.thumbnail
 
     # Content data
     Metadata:
-        Summary: summary_text
-        MachineTranscription: machine_transcription_text
-        HumanTranscription: human_transcription_text
-        ScreenCapture: screen_capture_text
-        Presentation: presentation_text
+        Summary: panopto_summary
+        MachineTranscription: panopto_machine_transcription
+        HumanTranscription: panopto_human_transcription
+        ScreenCapture: panopto_screen_capture
+        Presentation: panopto_presentation
+        ThumbnailUrl: panopto_thumnail_url

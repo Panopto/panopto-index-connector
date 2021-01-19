@@ -35,8 +35,16 @@ class ConnectorConfig:
         """
 
         with ruamel.yaml.YAML() as yaml:
-            with open(config_file_path) as configstream:
-                yaml_config = yaml.load(configstream)
+            with open(config_file_path, 'r') as configstream:
+                try:
+                    yaml_config = yaml.load(configstream)
+                except ruamel.yaml.error.MarkedYAMLError as myerr:
+                    message = myerr.context + ' ' + myerr.problem
+                    mark = myerr.problem_mark
+                    location = 'line: %i col: %i' % (mark.line, mark.column)
+                    raise InvalidConfiguration(message + ' ' + location) from myerr
+                except ruamel.yaml.error.YAMLError as yerr:
+                    raise InvalidConfiguration('Unspecified error') from yerr
         return yaml_config
 
     @staticmethod
@@ -99,3 +107,11 @@ class ConnectorConfig:
     @property
     def target_implementation(self):
         return self._yaml_config['target_implementation']
+
+
+class InvalidConfiguration(Exception):
+    """
+    The configuration specified for the connector is not valid yaml
+    """
+    def __init__(self, message):
+        super().__init__('Parse failure: ' + message)

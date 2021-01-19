@@ -49,7 +49,7 @@ def convert_to_target(panopto_content, field_mapping):
     target_content['permissions'] = [
         {
             'principal': {
-                'name': principal.get('Username', principal.get('Groupname')),
+                'name': principal.get('Username') or principal.get('Groupname'),
                 'realm': 'Panopto',
                 'type': 'user' if principal.get('Username') else 'group'
             },
@@ -61,10 +61,13 @@ def convert_to_target(panopto_content, field_mapping):
     return target_content
 
 
-def push_to_target(target_content, target_address, target_credentials, config):
+def push_to_target(target_content, config):
     """
     Implement this method to push converted content to the target
     """
+
+    target_address = config.target_address
+    target_credentials = config.target_credentials
 
     auth = requests.auth.HTTPBasicAuth(target_credentials['username'], target_credentials['password'])
 
@@ -89,10 +92,13 @@ def push_to_target(target_content, target_address, target_credentials, config):
     _disconnect_session_in_attivio(target_address, auth, session)
 
 
-def delete_from_target(video_id, target_address, target_credentials):
+def delete_from_target(video_id, config):
     """
     Implement this method to push converted content to the target
     """
+
+    target_address = config.target_address
+    target_credentials = config.target_credentials
 
     auth = requests.auth.HTTPBasicAuth(target_credentials['username'], target_credentials['password'])
 
