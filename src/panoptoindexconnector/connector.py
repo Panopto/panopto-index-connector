@@ -7,20 +7,24 @@ A prototype of the example connector app we will publish.
 # Standard Library Imports
 import argparse
 from datetime import datetime
+import glob
 import json
 import logging
 import os
 import time
 
 # Third party
+import readline
 import requests
 
 # Local
-from panoptoindexconnector.connector_config import ConnectorConfig
+from panoptoindexconnector.connector_config import ConnectorConfig, InvalidConfiguration
+from panoptoindexconnector.helpers import format_request_secure
 from panoptoindexconnector.target_handler import TargetHandler
 
 
 LOG = logging.getLogger(__name__)
+MIN_DATETIME = datetime(2008, 1, 1)
 
 
 ###################################################################################################
@@ -43,6 +47,8 @@ def get_ids_to_update(oauth_token, panopto_site_address, from_date, next_token):
     headers = {'Authorization': 'Bearer ' + oauth_token}
 
     response = requests.get(url=url, params=params, headers=headers)
+
+    LOG.debug('Request was %s', format_request_secure(response.request))
     response.raise_for_status()
 
     LOG.debug('Received updates response %s', json.dumps(response.json(), indent=2))
@@ -51,16 +57,15 @@ def get_ids_to_update(oauth_token, panopto_site_address, from_date, next_token):
     return response.json()
 
 
-def get_last_update_time(implementation_name):
+def get_last_update_time(profile_name):
     """
     Read last update time
     """
 
-    home = os.path.expanduser('~')
-    file_name = os.path.join(home, '.panopto-connector.' + implementation_name)
+    file_name = get_profile_state_filepath(profile_name)
 
     # Assume a default from before the site existed
-    last_update_time = datetime(2008, 1, 1)
+    last_update_time = MIN_DATETIME
 
     # If the tracking file can be found and contains content, use that as the last update time
     if os.path.exists(file_name):
@@ -71,6 +76,15 @@ def get_last_update_time(implementation_name):
                 last_update_time = datetime.fromisoformat(last_update_time_str)
 
     return last_update_time
+
+
+def get_profile_state_filepath(profile_name):
+    """
+    Gets the state file locatoin for the profile
+    """
+
+    home = os.path.expanduser('~')
+    return os.path.join(home, '.panopto-connector.' + profile_name)
 
 
 def get_oauth_token(panopto_site_address, panopto_oauth_credentials):
@@ -109,6 +123,8 @@ def get_video_content(oauth_token, panopto_site_address, video_id):
     headers = {'Authorization': 'Bearer ' + oauth_token}
 
     response = requests.get(url=url, params=params, headers=headers)
+    LOG.debug('Request was %s', format_request_secure(response.request))
+
     response.raise_for_status()
 
     LOG.debug('Received content response %s', json.dumps(response.json(), indent=2))
@@ -116,13 +132,27 @@ def get_video_content(oauth_token, panopto_site_address, video_id):
     return response.json()
 
 
-def save_last_update_time(last_update_time, implementation_name):
+def parse_api_update_time(update_time_str):
+    """
+    Parses the update time from the Panopto Search Integration API
+    """
+    # Strip off the Z if it exists
+    update_time_str = update_time_str.rstrip('Z')
+    # Strip off the floats as datetime package only accepts exactly 6 digits of float,
+    # and we don't need that level of precision
+    update_time_str = update_time_str.split('.')[0]
+    # Parse the last time the document was updated by panopto API format
+    update_time = datetime.strptime(update_time_str, '%Y-%m-%dT%H:%M:%S')
+
+    return update_time
+
+
+def save_last_update_time(last_update_time, profile_name):
     """
     Save the last update time to the state tracking file
     """
 
-    home = os.path.expanduser('~')
-    file_name = os.path.join(home, '.panopto-connector.' + implementation_name)
+    file_name = get_profile_state_filepath(profile_name)
 
     with open(file_name, 'a') as file_handle:
         file_handle.write(last_update_time.isoformat() + '\n')
@@ -141,6 +171,14 @@ def sync_video_by_id(handler, oauth_token, config, video_id):
         handler.push_to_target(target_content, config)
 
 
+def trigger_rebuild(profile_name):
+    """
+    Save MIN_DATETIME as last update to trigger a rebuild
+    """
+    LOG.info('Triggering rebuild by resetting last update')
+    save_last_update_time(MIN_DATETIME, profile_name)
+
+
 ###################################################################################################
 #
 # System layer
@@ -148,7 +186,7 @@ def sync_video_by_id(handler, oauth_token, config, video_id):
 ###################################################################################################
 
 
-def run(config):
+def run(config, profile_name):
     """
     Run a sync given a config
     """
@@ -156,7 +194,7 @@ def run(config):
     assert isinstance(config, ConnectorConfig), 'config must be of type %s' % ConnectorConfig
 
     # Get time to update from
-    last_update_time = get_last_update_time(config.target_implementation)
+    last_update_time = get_last_update_time(profile_name)
 
     while True:
         LOG.info('Beginning search index sync')
@@ -172,7 +210,7 @@ def run(config):
         else:
             remaining_time = start_time + config.polling_frequency - datetime.utcnow()
 
-        save_last_update_time(last_update_time, config.target_implementation)
+        save_last_update_time(last_update_time, profile_name)
 
         wait(remaining_time)
 
@@ -192,16 +230,17 @@ def sync(config, last_update_time):
     start_time = datetime.utcnow()
     new_last_update_time = last_update_time
 
+    handler.initialize()
+
     try:
         for _ in range(1000):
             get_ids_response = get_ids_to_update(oauth_token, config.panopto_site_address, last_update_time, next_token)
             for update in get_ids_response['Updates']:
+
                 video_id = update['VideoId']
-                # Strip off the floats as datetime package only accepts exactly 6 digits of float,
-                # and we don't need that level of precision
-                update_time_str = update['UpdateTime'].split('.')[0]
-                # Parse the last time the document was updated by panopto API format
-                update_time = datetime.strptime(update_time_str, '%Y-%m-%dT%H:%M:%S')
+
+                update_time = parse_api_update_time(update['UpdateTime'])
+
                 sync_video_by_id(handler, oauth_token, config, video_id)
                 new_last_update_time = update_time
                 # Sleep to avoid getting throttled by the API
@@ -217,6 +256,8 @@ def sync(config, last_update_time):
         exception = ex
     except Exception as ex:  # pylint: disable=broad-except
         exception = ex
+    finally:
+        handler.teardown()
 
     if exception is None:
         new_last_update_time = start_time
@@ -252,10 +293,30 @@ def main():
     args = parse_args()
     set_logger(args.logging_level)
 
-    config = ConnectorConfig(args.configuration_file)
-    LOG.info('Starting connector with configuration \n%s', config)
+    if args.configuration_file:
+        config = ConnectorConfig(args.configuration_file)
+    else:
+        # If config file wasn't passed in on CLI query for it
+        config = prompt_user_configuration_file()
 
-    run(config)
+    # Trim extension and folder to generate a unique profile name
+    profile_name = os.path.split(os.path.splitext(config.config_file_path)[0])[1]
+    LOG.info('Starting connector profile %s with configuration \n%s', profile_name, config)
+
+    rebuild = args.rebuild
+    # A little bit hacky; if we don't have a CLI arg, assume we are in interactive mode
+    # and we should prompt the user whether to trigger a rebuild
+    if not args.rebuild and not args.configuration_file:
+
+        # In interactive state, if rebuild was not passed on CLI, check with user
+        # as we can't tell if they are running on CLI or double click packaged program
+        profile_name = os.path.split(os.path.splitext(config.config_file_path)[0])[1]
+        rebuild = prompt_user_rebuild(profile_name)
+
+    if rebuild:
+        trigger_rebuild(profile_name)
+
+    run(config, profile_name)
 
 
 def parse_args():
@@ -269,9 +330,54 @@ def parse_args():
     # Logging levels, local and third party
     parser.add_argument('--logging-level', choices=['warn', 'info', 'debug'], default='info')
 
-    parser.add_argument('-c', '--configuration-file', required=True, help='Path to a config file')
+    parser.add_argument('-c', '--configuration-file', required=False, help='Path to a config file')
+    parser.add_argument('--rebuild', action='store_true', help='Trigger a rebuild by clearing the state file')
 
     return parser.parse_args()
+
+
+def prompt_user_configuration_file():
+    """
+    Get the profile to use from the user
+    """
+
+    config = None
+    while not config:
+        location = prompt_user_with_autocomplete('What is the path to your configuration file?\n > ')
+
+        try:
+            config = ConnectorConfig(location)
+        except FileNotFoundError:
+            LOG.info('The configuration file at "%s" was not found', location)
+        except InvalidConfiguration as ice:
+            LOG.info('The YAML was invalid in the configuration file: %s', ice)
+
+    return config
+
+
+def prompt_user_rebuild(profile_name):
+    """
+    Prompt the user t/f whether they would like to rebuild
+    """
+    print('Would you like to rebuild profile %s? Rebuilding takes extra time to current and may incur extra '
+          'costs or resources on your target.' % profile_name)
+    query = ' (y for yes, any other key for no) > '
+    result = input(query)
+    return result.lower() == 'y' or result.lower() == 'yes'
+
+
+def prompt_user_with_autocomplete(prompt):
+    """
+    Prompt with file path autocomplete
+    """
+    def complete(text, state):
+        return (glob.glob(text+'*')+[None])[state]
+
+    readline.set_completer_delims(' \t\n;')
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(complete)
+
+    return input(prompt)
 
 
 def set_logger(logging_level):

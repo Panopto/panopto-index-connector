@@ -60,7 +60,7 @@ def convert_to_target(panopto_content, field_mapping):
     return target_content
 
 
-def push_to_target(target_content, target_address, target_credentials, config):
+def push_to_target(target_content, config):
     """
     Implement this method to push converted content to the target
     """
@@ -68,7 +68,7 @@ def push_to_target(target_content, target_address, target_credentials, config):
     LOG.info('Would push the following to target: %s', json.dumps(target_content, indent=2))
 
 
-def delete_from_target(video_id, target_address, target_credentials):
+def delete_from_target(video_id, config):
     """
     Implement this method to push converted content to the target
     """

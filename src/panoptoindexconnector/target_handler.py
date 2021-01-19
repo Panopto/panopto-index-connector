@@ -6,6 +6,7 @@ Implement these methods for the connector application
 
 # Standard Library Imports
 from importlib import import_module
+import inspect
 import logging
 import os
 
@@ -54,16 +55,44 @@ class TargetHandler:
         return self._implementation_module.convert_to_target(
             panopto_video_content, self._config.field_mapping)
 
+    def initialize(self):
+        """
+        Take custom initialization actions if needed
+        """
+        function = self._get_function_from_implementation('initialize')
+        if function:
+            function(self._config)
+
     def delete_from_target(self, video_id):
         """
         Implement this method to push converted content to the target
         """
         self._implementation_module.delete_from_target(
-            video_id, self._config.target_address, self._config.target_credentials)
+            video_id, self._config)
 
     def push_to_target(self, target_content, config):
         """
         Implement this method to push converted content to the target
         """
         self._implementation_module.push_to_target(
-            target_content, self._config.target_address, self._config.target_credentials, config)
+            target_content, config)
+
+    def teardown(self):
+        """
+        Take custom initialization actions if needed
+        """
+        function = self._get_function_from_implementation('teardown')
+        if function:
+            function(self._config)
+
+    def _get_function_from_implementation(self, name):
+        """
+        Gets a function or None by name in the implementation module
+        """
+        return next(
+            (
+                m[1] for m in inspect.getmembers(self._implementation_module)
+                if inspect.isfunction(m[1])
+                and m[0] == name
+            ),
+            None)
