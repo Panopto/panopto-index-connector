@@ -155,7 +155,45 @@ Running the debug connector once you have configured your user and your oauth cr
 
 ### The Coveo implementation
 
-An implementation for Coveo v2 is under development. A very rough template is available, and can be adopted to your purposes.
+The Coveo implementation works out of the box with your Coveo push source. You need to define your push source with the fields you select in the configuration of your configuration file. The template configuration file is `coveo.yaml`.
+
+Create a copy of it and define the following. If you are on coveo cloud, you will not need to change the target address. Your credentials should include an api key to your push source with full access.
+
+```yml
+# Your index integration target endpoint
+target_address: https://api.cloud.coveo.com
+
+# Your coveo engine username/password for the connector
+target_credentials:
+    api_key: 00000000-0000-0000-0000-000000000000
+    organization: acoveoorganization
+    source: acoveoorganization-somethingorother
+```
+
+Then you define how to map the body elements of the panopto api response to fields in Coveo. Important notes:
+- `Id: permanentid` This mapping should remain fixed, as permanentid is a predefined field in Coveo which remains static, even if the file uri changes.
+- `Info: subelements` These mappings are standard fields in Coveo as well and should not change.
+- `Metadata: subelements` These mappings you may define however you please. If you have defined the fields in Coveo, then they will ingest and be searchable based on the text fields. Any field you haven't defined will be ignored on indexing.
+
+```yml
+    # Id in panopto maps to permanentid in coveo
+    Id: permanentid
+
+    # Top level data
+    Info:
+        Title: title
+        Language: language
+        Url: uri
+
+    # Content data
+    Metadata:
+        Summary: panopto_summary
+        MachineTranscription: panopto_machine_transcription
+        HumanTranscription: panopto_human_transcription
+        ScreenCapture: panopto_screen_capture
+        Presentation: panopto_presentation
+        ThumbnailUrl: panopto_thumnail_url
+```
 
 ### The Attivio implementation
 
