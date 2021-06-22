@@ -11,6 +11,7 @@ import glob
 import json
 import logging
 import os
+import sys
 import time
 
 # Third party
@@ -158,6 +159,36 @@ def save_last_update_time(last_update_time, profile_name):
         file_handle.write(last_update_time.isoformat() + '\n')
 
 
+def should_push(video_content_response, config):
+    """
+    Returns true/false for whether we should push this video.
+
+    Will return "true" if either the permission whitelist is not set, or
+    if the video content contains the whitelisted permission
+    """
+    # if there's no whitelist, proceed
+    if not config.principal_whitelist:
+        return True
+    # else we have a whitelist; let's match against it
+    principals = video_content_response['VideoContent']['Principals']
+    # we'll just walk the permission whitelist and check match against each principal
+    for whitelisted_principal in config.principal_whitelist:
+        # Format it as <User|Group>:<IdProvider>:<Name>, case invariant
+        try:
+            principal_type, id_provider, name = whitelisted_principal.split(':')
+            assert principal_type in ('User', 'Group')
+        except Exception:  # pylint: disable=broad-except
+            LOG.error('Invalid principal in principal whitelist. Expected format '
+                      '<User|Group>:<IdProvider>:<Name>, received %s', whitelisted_principal)
+            sys.exit(2)
+        name_key = principal_type + 'name'  # Username or Groupname
+        for principal in principals:
+            LOG.debug('Considering principal %s', principal)
+            if principal.get(name_key) == name and id_provider == principal.get('IdentityProvider'):
+                return True
+    return False
+
+
 def sync_video_by_id(handler, oauth_token, config, video_id):
     """
     Sync video metadata from Panopto to target by ID
@@ -167,8 +198,11 @@ def sync_video_by_id(handler, oauth_token, config, video_id):
     if video_content_response['Deleted']:
         handler.delete_from_target(video_content_response['Id'])
     else:
-        target_content = handler.convert_to_target(video_content_response)
-        handler.push_to_target(target_content, config)
+        if should_push(video_content_response, config):
+            target_content = handler.convert_to_target(video_content_response)
+            handler.push_to_target(target_content, config)
+        else:
+            LOG.info('Skipping update for video %s as it did not match principal whitelist', video_id)
 
 
 def trigger_rebuild(profile_name):

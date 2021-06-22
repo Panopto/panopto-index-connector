@@ -97,8 +97,16 @@ class ConnectorConfig:
         return timedelta(seconds=self._yaml_config.get('polling_retry_minimum', 300))
 
     @property
+    def principal_whitelist(self):
+        return self._yaml_config.get('principal_whitelist', None)
+
+    @property
     def sleep_seconds(self):
         return self._yaml_config.get('sleep_seconds', 1)
+
+    @property
+    def skip_permissions(self):
+        return self._yaml_config.get('skip_permissions').lower() == 'true'
 
     @property
     def target_address(self):
