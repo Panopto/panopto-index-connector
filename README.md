@@ -46,7 +46,7 @@ python build_standalone.py
 
 This will produce `dist\panopto-connector.exe` which may be copied to and run as a standalone application. Note that `build_standalone.py` will create a windows executable if run from a windows computer, and a linux executable if run from a linux computer.
 
-### Method 3: Install via easy_setup (recommended for hacking/developing)
+### Method 3: Install via easy_setup (recommended for development)
 
 To install the Panopto Index Connector, follow these steps
 
@@ -124,7 +124,7 @@ Next we recommend running the [debug implementation](the-debug-implementation) b
 
 Next, you will choose a target index connector implementation. That will involve either using one of the predefined connector implementations, or developing your own. If choosing an existing implementation, you may need to make some custom code changes to it depending on your exact scenario. Finally, you will define your config file. See below for more details.
 
-When  you are ready to run the connector, you'll do so by running the following commandline: `panopto-index-connector -c <path-to-config-file>`. Once you have tested your connector, we recommend installing it as a service or daemon on the machine it will run on. 
+When you are ready to run the connector, you'll do so by running the following commandline: `panopto-index-connector -c <path-to-config-file>`. Once you have tested your connector, we recommend installing it as a service or daemon on the machine it will run on. 
 
 See below on how to configure your implementation.
 
@@ -152,6 +152,26 @@ panopto_oauth_credentials:
 ```
 
 Running the debug connector once you have configured your user and your oauth credentials is recommended to confirm that you are set up to correctly talk to the Panopto APIs, before continuing to your final implementation.
+
+Other configuration options which are helpful to know about:
+```yml
+# Allows you to only send videos to the target matching one of a given permission set
+# First bullet would only sync videos with view permission of a given Panopto groups
+# The second for a given group from an external Identity provider
+# The third would be only videos with panopto public permissions
+# The fourth would be all authenticated users at your organization
+permission_whitelist:
+    - Group:Panopto:mygroup
+    - Group:MyAdProvider:anothergroup
+    - Group:Panopto:Public
+    - Group:Panopto:All Users
+
+# Default if empty or blank is false
+# If true, tells the implementation to not push permissions
+# Note this is only supported out of the box for coveo implementation
+skip_permissions: true
+```
+
 
 ### The Coveo implementation
 
