@@ -19,9 +19,10 @@ LOG = logging.getLogger(__name__)
 def test_attivio_conversion():
 
     # Configuration
-    from panoptoindexconnector import attivio_implementation as implementation
+    from panoptoindexconnector.implementations import attivio_implementation as implementation
     from panoptoindexconnector.connector_config import ConnectorConfig
-    field_mapping = ConnectorConfig(os.path.join(DIR, '..', 'src', 'panoptoindexconnector', 'attivio.yaml')).field_mapping
+    attivio_path = os.path.join(DIR, '..', 'src', 'panoptoindexconnector', 'implementations', 'attivio.yaml')
+    field_mapping = ConnectorConfig(attivio_path).field_mapping
 
     # Dummy content and useful example
     panopto_content = {

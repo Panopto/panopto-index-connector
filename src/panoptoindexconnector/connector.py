@@ -244,7 +244,7 @@ def sync(config, last_update_time):
                 sync_video_by_id(handler, oauth_token, config, video_id)
                 new_last_update_time = update_time
                 # Sleep to avoid getting throttled by the API
-                time.sleep(2)
+                time.sleep(config.sleep_seconds)
             next_token = get_ids_response['NextToken']
             if next_token is None:
                 LOG.info('Sync complete')

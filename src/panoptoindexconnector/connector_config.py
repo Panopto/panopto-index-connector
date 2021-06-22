@@ -97,6 +97,10 @@ class ConnectorConfig:
         return timedelta(seconds=self._yaml_config.get('polling_retry_minimum', 300))
 
     @property
+    def sleep_seconds(self):
+        return self._yaml_config.get('sleep_seconds', 1)
+
+    @property
     def target_address(self):
         return self._yaml_config['target_address']
 

@@ -86,11 +86,11 @@ def convert_to_target(panopto_content, field_mapping):
             'allowedPermissions': [
                 {
                     'identityType': 'Group' if principal.get('Groupname') else 'User',
-                    'identity': principal.get('Email') or principal.get('Groupname')
+                    'identity': principal.get('Email') or principal.get('Groupname') or 'admin@acco.unt'
                 }
                 for principal in panopto_content['VideoContent']['Principals']
                 if principal.get('Groupname') != 'Public'
-                and (principal.get('Email') or principal.get('Groupname'))
+                and (principal.get('Email') or principal.get('Groupname') or principal.get('Username') == 'admin')
             ]
         }
     ]
@@ -109,23 +109,49 @@ def push_to_target(target_content, config):
     Implement this method to push converted content to the target
     """
 
-    target_address = config.target_address
-    target_credentials = config.target_credentials
+    push_needed_security_mappings(target_content, config)
+    push_content_data(target_content, config)
+
+
+def push_content_data(target_content, config):
+    """
+    Push the actual content
+    """
     field_mapping = config.field_mapping
 
-    url = '{coveo}/push/v1/organizations/{org}/sources/{source}/documents?documentId={id}'.format(
-        coveo=target_address,
-        org=target_credentials['organization'],
-        source=target_credentials['source'],
-        id=_get_document_id(config.panopto_site_address, target_content[field_mapping['Id']]))
-    headers = _get_headers(target_credentials['api_key'])
+    url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=%s' % (
+        _get_document_id(config.panopto_site_address, target_content[field_mapping['Id']]))
+    _ = _send_coveo_request(config, url, 'put', json=target_content)
 
-    response = requests.put(url=url, json=target_content, headers=headers)
-    LOG.debug('Request was %s', format_request_secure(response.request))
 
-    if not response.ok:
-        LOG.error('Failed response: %s, %s', response, response.text)
-    response.raise_for_status()
+def push_needed_security_mappings(target_content, config):
+    """
+    Push em
+    """
+
+    allow_permissions = target_content['permissions'][0]['allowedPermissions']
+    needed_permissions = [p for p in allow_permissions if should_map_security(p['identity'])]
+    if needed_permissions:
+        ensure_each_security_mapping(target_content, config, needed_permissions)
+    LOG.info('Pushed %i new security identities', len(needed_permissions))
+
+
+def ensure_each_security_mapping(target_content, config, needed_permissions):
+    """
+    1 x 1
+    """
+    provider_id = config.target_credentials.get('security_provider')
+    for permission in needed_permissions:
+        # get the permission
+        # body = permissions_to_batch_body([needed_permission])
+        body = {
+            "identity": {
+                "name": permission["identity"],
+                "type": permission["identityType"].upper()
+            }
+        }
+        uri = '{coveourl}/push/v1/organizations/{org}/providers/%s/permissions' % provider_id
+        _send_coveo_request(config, uri, 'put', json=body)
 
 
 def delete_from_target(video_id, config):
@@ -133,21 +159,9 @@ def delete_from_target(video_id, config):
     Implement this method to push converted content to the target
     """
 
-    target_address = config.target_address
-    target_credentials = config.target_credentials
-
-    url = '{coveo}/push/v1/organizations/{org}/sources/{source}/documents?documentId={id}'.format(
-        coveo=target_address, org=target_credentials['organization'],
-        source=target_credentials['source'],
-        id=_get_document_id(config.panopto_site_address, video_id))
-    headers = _get_headers(target_credentials['api_key'])
-
-    response = requests.delete(url=url, headers=headers)
-    LOG.debug('Request was %s', format_request_secure(response.request))
-
-    if not response.ok:
-        LOG.error('Failed response: %s, %s', response, response.text)
-    response.raise_for_status()
+    url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=' + \
+        _get_document_id(config.panopto_site_address, video_id)
+    _ = _send_coveo_request(config, url, 'delete')
 
 
 #
@@ -175,6 +189,60 @@ def teardown(config):
 ##############################################
 
 
+def _send_coveo_request(config, url_format, requesttype, additional_headers=None, skip_default_headers=False, **kwargs):
+    """
+    Internal helper to send a request for coveo
+    """
+
+    requesttype = requesttype.lower()
+
+    if requesttype not in ('get', 'put', 'delete', 'post'):
+        raise ValueError('Unexpected rest request type: %s' % requesttype)
+
+    target_address = config.target_address
+    target_credentials = config.target_credentials
+
+    headers = dict() if skip_default_headers else _get_default_headers(target_credentials['api_key'])
+
+    if additional_headers:
+        headers.update(additional_headers)
+
+    # Supply default config based defaults if not given
+    url = url_format.format(
+        coveourl=target_address,
+        org=target_credentials['organization'],
+        source=target_credentials['source'])
+
+    handler = requests.__dict__[requesttype]
+
+    response = handler(url=url, headers=headers, **kwargs)
+    if not response.ok:
+        LOG.error('Failed response\n%s', format_request_secure(response.request))
+    response.raise_for_status()
+    return response
+
+
+SECURITY_IDS_MAPPED_TO_PROVIDER = set()
+"""
+Keeps a record of users pushed to the provider;
+just a per process lifespan to get unblocked.
+"""
+
+
+def record_security_mapping(key):
+    """
+    Just cheap way to ensure we've defined the mappings
+    """
+    SECURITY_IDS_MAPPED_TO_PROVIDER.add(key)
+
+
+def should_map_security(key):
+    """
+    T/f whether the user needs to be mapped
+    """
+    return key not in SECURITY_IDS_MAPPED_TO_PROVIDER
+
+
 def _get_document_id(panopto_site_address, vid):
     """
     Coveo document id must be formatted as a uri
@@ -183,29 +251,57 @@ def _get_document_id(panopto_site_address, vid):
         site=panopto_site_address, id=vid)
 
 
-def _get_headers(api_key):
+def _get_default_headers(api_key):
     """
     Gets the common headers
     """
-    return {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api_key}
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + api_key,
+        'Accept': 'application/json'}
+
+
+def permissions_to_batch_body(permissions):
+    """
+    Maps a coveo allow permission to a coveo security identity
+    """
+    members, mappings = [], []
+    for permission in permissions:
+        if permission['identityType'].lower() == 'group':
+            members.append({
+                'name': permission['identity'],
+                'type': 'GROUP',  # UPPER strict here
+                'members': [],
+                'wellKnowns': [],
+            })
+        if permission['identityType'].lower() == 'user':
+            mappings.append({
+                'identity': {
+                    'name': permission['identity'],
+                    'type': 'USER',  # UPPER strict here
+                },
+                'mappings': [{
+                    'name': permission['identity'],
+                    'type': 'USER',
+                    'provider': 'Email Security Provider'
+                }],
+                'wellKnowns': []
+            })
+            members.append({
+                'name': permission['identity'],
+                'type': 'USER',  # UPPER strict here
+            })
+        else:
+            LOG.warning('Permission %s could not be mapped to an identity', permission)
+    return {'members': members, 'mappings': mappings, 'delete': []}
 
 
 def _set_status(status, config):
     """
     Set the status of your push source
     """
-    #  https://api.cloud.coveo.com/push/v1/organizations/<MyOrganizationId>/sources/<MySourceId>/status?statusType=<MyStatusType>
-    url = '{coveo}/push/v1/organizations/{org}/sources/{source}/status?statusType={status}'.format(
-        coveo=config.target_address,
-        org=config.target_credentials['organization'],
-        source=config.target_credentials['source'],
-        status=status)
-    headers = _get_headers(config.target_credentials['api_key'])
-
-    response = requests.post(url=url, headers=headers)
-    LOG.debug('Request was %s', format_request_secure(response.request))
-
-    response.raise_for_status()
+    #  https://api.cloud.coveo.com/push/v1/organizations/<orgid>/sources/<srcid>/status?statusType=<status>
+    url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/status?statusType=' + status
+    _ = _send_coveo_request(config, url, 'post')
 
     LOG.info('Successfully set coveo push source status to %s', status)
-

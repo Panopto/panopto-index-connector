@@ -59,7 +59,7 @@ class TargetHandler:
         """
         Take custom initialization actions if needed
         """
-        function = self._get_function_from_implementation('initialize')
+        function = self._get_function_by_implementation('initialize')
         if function:
             function(self._config)
 
@@ -81,11 +81,11 @@ class TargetHandler:
         """
         Take custom initialization actions if needed
         """
-        function = self._get_function_from_implementation('teardown')
+        function = self._get_function_by_implementation('teardown')
         if function:
             function(self._config)
 
-    def _get_function_from_implementation(self, name):
+    def _get_function_by_implementation(self, name):
         """
         Gets a function or None by name in the implementation module
         """
