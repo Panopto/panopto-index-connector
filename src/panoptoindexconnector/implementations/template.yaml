@@ -25,6 +25,18 @@ target_credentials:
 # The name of your implementation
 target_implementation: debug_implementation
 
+# Should we whitelist videos based on source permissions
+# leave this blank if you will not whitelist which videos are pushed
+# based on the source Panopto permissions
+principal_whitelist:
+#   - User:Panopto:myuser
+#   - Group:MyIdentityProvider:friends-and-family
+
+# Set to "true" if we should not push permissions to the target;
+# often used with the principal_whitelist to control permissions by
+# what is synced rather than matching the ID Provider on the target
+skip_permissions: false
+
 # Define the mapping from Panopto fields to the target field names
 field_mapping:
     # Top level data

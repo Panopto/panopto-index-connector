@@ -106,7 +106,9 @@ class ConnectorConfig:
 
     @property
     def skip_permissions(self):
-        return self._yaml_config.get('skip_permissions').lower() == 'true'
+        # ensures that this is parsed correctly where interpreted as bool or string
+        # since yaml flexible; maybe too flexible in this case :)
+        return str(self._yaml_config.get('skip_permissions')).lower() == 'true'
 
     @property
     def target_address(self):

@@ -22,7 +22,7 @@ def test_attivio_conversion():
     from panoptoindexconnector.implementations import attivio_implementation as implementation
     from panoptoindexconnector.connector_config import ConnectorConfig
     attivio_path = os.path.join(DIR, '..', 'src', 'panoptoindexconnector', 'implementations', 'attivio.yaml')
-    field_mapping = ConnectorConfig(attivio_path).field_mapping
+    config = ConnectorConfig(attivio_path)
 
     # Dummy content and useful example
     panopto_content = {
@@ -43,6 +43,6 @@ def test_attivio_conversion():
     }
 
     # Test conversion and assert attivio formatting
-    attivio_content = implementation.convert_to_target(panopto_content, field_mapping)
+    attivio_content = implementation.convert_to_target(panopto_content, config)
 
-    assert attivio_content[field_mapping['Id']] == panopto_content['Id']
+    assert attivio_content[config.field_mapping['Id']] == panopto_content['Id']

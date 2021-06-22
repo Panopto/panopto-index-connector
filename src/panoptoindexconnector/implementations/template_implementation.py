@@ -24,10 +24,13 @@ LOG = logging.getLogger(__name__)
 #########################################################################
 
 
-def convert_to_target(panopto_content, field_mapping):
+def convert_to_target(panopto_content, config):
     """
-    Implement this method to convert from panopto content format to target format
+    Implement this method to convert to target format
     """
+    # You'll probably only use the field mapping, get it as such
+    # Other relevant values: config.skip_permissions
+    # field_mapping = config.field_mapping
 
     raise NotImplementedError("This is only a template")
 
