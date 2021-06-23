@@ -163,28 +163,31 @@ def should_push(video_content_response, config):
     """
     Returns true/false for whether we should push this video.
 
-    Will return "true" if either the permission whitelist is not set, or
-    if the video content contains the whitelisted permission
+    Will return "true" if either the permission allowlist is not set, or
+    if the video content contains the allowlisted permission
     """
-    # if there's no whitelist, proceed
-    if not config.principal_whitelist:
+    # if there's no allowlist, proceed
+    if not config.principal_allowlist:
         return True
-    # else we have a whitelist; let's match against it
+    # else we have a allowlist; let's match against it
     principals = video_content_response['VideoContent']['Principals']
-    # we'll just walk the permission whitelist and check match against each principal
-    for whitelisted_principal in config.principal_whitelist:
-        # Format it as <User|Group>:<IdProvider>:<Name>, case invariant
+    # we'll just walk the permission allowlist and check match against each principal
+    for allowed_principal in config.principal_allowlist:
+        # Format it as <User|Group>:<IdProvider>:<Name>
+        LOG.debug('Considering allowed principal %s', allowed_principal)
         try:
-            principal_type, id_provider, name = whitelisted_principal.split(':')
+            principal_type, id_provider, name = allowed_principal.split(':')
             assert principal_type in ('User', 'Group')
         except Exception:  # pylint: disable=broad-except
-            LOG.error('Invalid principal in principal whitelist. Expected format '
-                      '<User|Group>:<IdProvider>:<Name>, received %s', whitelisted_principal)
+            LOG.error('Invalid principal in principal allowlist. Expected format '
+                      '<User|Group>:<IdProvider>:<Name>, received %s', allowed_principal)
             sys.exit(2)
         name_key = principal_type + 'name'  # Username or Groupname
         for principal in principals:
             LOG.debug('Considering principal %s', principal)
-            if principal.get(name_key) == name and id_provider == principal.get('IdentityProvider'):
+            principal_name = principal.get(name_key)
+            principal_provider = principal.get('IdentityProvider') or 'Panopto'
+            if principal_name == name and principal_provider == id_provider:
                 return True
     return False
 
@@ -202,7 +205,7 @@ def sync_video_by_id(handler, oauth_token, config, video_id):
             target_content = handler.convert_to_target(video_content_response)
             handler.push_to_target(target_content, config)
         else:
-            LOG.info('Skipping update for video %s as it did not match principal whitelist', video_id)
+            LOG.info('Skipping update for video %s as it did not match principal allowlist', video_id)
 
 
 def trigger_rebuild(profile_name):

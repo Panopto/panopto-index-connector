@@ -160,7 +160,7 @@ Other configuration options which are helpful to know about:
 # The second for a given group from an external Identity provider
 # The third would be only videos with panopto public permissions
 # The fourth would be all authenticated users at your organization
-permission_whitelist:
+principal_allowlist:
     - Group:Panopto:mygroup
     - Group:MyAdProvider:anothergroup
     - Group:Panopto:Public

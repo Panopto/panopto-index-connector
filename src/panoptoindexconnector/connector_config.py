@@ -62,7 +62,7 @@ class ConnectorConfig:
                 continue
             node = yaml_config[key]
             for node_key in node:
-                # whitelist -- only username and client id should be shown
+                # allowlist -- only username and client id should be shown
                 if node_key not in ('username', 'client_id', 'grant_type'):
                     node[node_key] = '********'
 
@@ -97,8 +97,8 @@ class ConnectorConfig:
         return timedelta(seconds=self._yaml_config.get('polling_retry_minimum', 300))
 
     @property
-    def principal_whitelist(self):
-        return self._yaml_config.get('principal_whitelist', None)
+    def principal_allowlist(self):
+        return self._yaml_config.get('principal_allowlist', None)
 
     @property
     def sleep_seconds(self):
