@@ -53,7 +53,7 @@ class TargetHandler:
         Implement this method to convert to target format
         """
         return self._implementation_module.convert_to_target(
-            panopto_video_content, self._config.field_mapping)
+            panopto_video_content, self._config)
 
     def initialize(self):
         """

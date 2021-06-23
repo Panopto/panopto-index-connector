@@ -24,10 +24,12 @@ LOG = logging.getLogger(__name__)
 #########################################################################
 
 
-def convert_to_target(panopto_content, field_mapping):
+def convert_to_target(panopto_content, config):
     """
     Implement this method to convert to target format
     """
+
+    field_mapping = config.field_mapping
 
     target_content = {field_mapping['Id']: panopto_content['Id']}
 

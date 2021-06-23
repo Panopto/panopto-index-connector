@@ -64,10 +64,12 @@ LOG = logging.getLogger(__name__)
 """
 
 
-def convert_to_target(panopto_content, field_mapping):
+def convert_to_target(panopto_content, config):
     """
-    Implement this method to convert from panopto content format to target format
+    Implement this method to convert to target format
     """
+
+    field_mapping = config.field_mapping
 
     target_content = {
         field_mapping['Id']: panopto_content['Id'],
@@ -81,23 +83,27 @@ def convert_to_target(panopto_content, field_mapping):
             target_content[target_field] = panopto_content['VideoContent'][key]
 
     # Principals
-    target_content['permissions'] = [
-        {
-            'allowedPermissions': [
-                {
-                    'identityType': 'Group' if principal.get('Groupname') else 'User',
-                    'identity': principal.get('Email') or principal.get('Groupname') or 'admin@acco.unt'
-                }
-                for principal in panopto_content['VideoContent']['Principals']
-                if principal.get('Groupname') != 'Public'
-                and (principal.get('Email') or principal.get('Groupname') or principal.get('Username') == 'admin')
-            ]
-        }
-    ]
-    target_content['permissions'][0]['allowAnonymous'] = any(
-        principal.get('Groupname') == 'Public'
-        for principal in panopto_content['VideoContent']['Principals']
-    )
+    if not config.skip_permissions:
+        target_content['permissions'] = [
+            {
+                'allowedPermissions': [
+                    {
+                        'identityType': 'Group' if principal.get('Groupname') else 'User',
+                        'identity': principal.get('Email') or principal.get('Groupname') or 'admin@acco.unt'
+                    }
+                    for principal in panopto_content['VideoContent']['Principals']
+                    if principal.get('Groupname') != 'Public'
+                    and (principal.get('Email') or principal.get('Groupname') or principal.get('Username') == 'admin')
+                ]
+            }
+        ]
+        target_content['permissions'][0]['allowAnonymous'] = any(
+            principal.get('Groupname') == 'Public'
+            for principal in panopto_content['VideoContent']['Principals']
+        )
+    else:
+        # https://docs.coveo.com/en/107/index-content/simple-permission-model-definition-examples
+        target_content['permissions'] = [{"allowAnonymous": True}]
 
     LOG.debug('Converted document is %s', json.dumps(target_content, indent=2))
 
@@ -129,7 +135,12 @@ def push_needed_security_mappings(target_content, config):
     Push em
     """
 
-    allow_permissions = target_content['permissions'][0]['allowedPermissions']
+    # We use a single rule with potentially multiple values, so we always grab the first
+    principal = target_content['permissions'][0]
+    # If this video has allow anonymous on it, there is nothing to do
+    if principal.get('allowAnonymous', False):
+        return
+    allow_permissions = principal['allowedPermissions']
     needed_permissions = [p for p in allow_permissions if should_map_security(p['identity'])]
     if needed_permissions:
         ensure_each_security_mapping(target_content, config, needed_permissions)

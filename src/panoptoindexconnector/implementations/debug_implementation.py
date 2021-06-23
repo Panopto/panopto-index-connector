@@ -26,10 +26,12 @@ LOG = logging.getLogger(__name__)
 # since this is debug, we'll disable using all the args
 # pylint: disable=unused-argument
 
-def convert_to_target(panopto_content, field_mapping):
+def convert_to_target(panopto_content, config):
     """
     Implement this method to convert to target format
     """
+
+    field_mapping = config.field_mapping
 
     LOG.info('Received the following panopto content: %s', json.dumps(panopto_content, indent=2))
 
