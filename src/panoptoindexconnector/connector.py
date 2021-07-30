@@ -152,7 +152,7 @@ def parse_api_update_time(update_time_str):
     update_time = datetime.strptime(update_time_str, '%Y-%m-%dT%H:%M:%S')
     # Python datetime strptime only supports microsecond format; so we process the seconds string separately
     # and ensure there is at least a microsecond increment to avoid resyncing the same video
-    second_decimal = timedelta(seconds=float('0.' + second_decimal_str) + .000001)
+    second_decimal = timedelta(seconds=float('0.' + second_decimal_str)) + timedelta(microseconds=1)
     update_time += second_decimal
 
     return update_time
