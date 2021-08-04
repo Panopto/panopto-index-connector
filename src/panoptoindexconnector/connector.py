@@ -321,8 +321,9 @@ def sync(config, last_update_time):
                 # Sleep to avoid getting throttled by the API
                 time.sleep(config.sleep_seconds)
             next_token = get_ids_response['NextToken']
-            print('------- NEXT TOKEN = %s ------------' % next_token)
-            if next_token is None:
+            if next_token:
+                LOG.info('Pagination continued at token: %s', next_token)
+            else:
                 LOG.info('Sync complete')
                 break
         else:
