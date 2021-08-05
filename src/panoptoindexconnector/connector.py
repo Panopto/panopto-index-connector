@@ -6,7 +6,7 @@ A prototype of the example connector app we will publish.
 
 # Standard Library Imports
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import glob
 import json
 import logging
@@ -24,6 +24,8 @@ from panoptoindexconnector.helpers import format_request_secure
 from panoptoindexconnector.target_handler import TargetHandler
 
 
+# 2 minute grace period on oauth expiration
+EXPIRATION_GRACE_PERIOD = timedelta(minutes=2)
 LOG = logging.getLogger(__name__)
 MIN_DATETIME = datetime(2008, 1, 1)
 
@@ -75,6 +77,9 @@ def get_last_update_time(profile_name):
             if lines:
                 last_update_time_str = lines[-1].strip()
                 last_update_time = datetime.fromisoformat(last_update_time_str)
+    else:
+        LOG.debug('File %s not found', file_name)
+    LOG.debug('Last update time is %s', last_update_time)
 
     return last_update_time
 
@@ -111,7 +116,7 @@ def get_oauth_token(panopto_site_address, panopto_oauth_credentials):
     LOG.debug(response.content)
     response.raise_for_status()
 
-    return response.json()['access_token']
+    return response.json()
 
 
 def get_video_content(oauth_token, panopto_site_address, video_id):
@@ -141,11 +146,29 @@ def parse_api_update_time(update_time_str):
     update_time_str = update_time_str.rstrip('Z')
     # Strip off the floats as datetime package only accepts exactly 6 digits of float,
     # and we don't need that level of precision
-    update_time_str = update_time_str.split('.')[0]
+    update_time_str, second_decimal_str = update_time_str.split('.')
     # Parse the last time the document was updated by panopto API format
     update_time = datetime.strptime(update_time_str, '%Y-%m-%dT%H:%M:%S')
+    # Python datetime strptime only supports microsecond format; so we process the seconds string separately
+    # and ensure there is at least a microsecond increment to avoid resyncing the same video
+    second_decimal = timedelta(seconds=float('0.' + second_decimal_str)) + timedelta(microseconds=1)
+    update_time += second_decimal
 
     return update_time
+
+
+def renew_oauth_token_if_needed(panopto_site_address, panopto_oauth_credentials, oauth_token, expiration_date):
+    """
+    Returns the current oauth token if it is present and valid, else gets a new one if it is missing
+    or soon to expire
+    :returns: oauth_token, expiration_date
+    """
+    if not oauth_token or not expiration_date or expiration_date <= datetime.utcnow():
+        now = datetime.utcnow()
+        oauth_token_response = get_oauth_token(panopto_site_address, panopto_oauth_credentials)
+        oauth_token = oauth_token_response['access_token']
+        expiration_date = now + timedelta(seconds=oauth_token_response['expires_in']) - EXPIRATION_GRACE_PERIOD
+    return oauth_token, expiration_date
 
 
 def save_last_update_time(last_update_time, profile_name):
@@ -154,6 +177,8 @@ def save_last_update_time(last_update_time, profile_name):
     """
 
     file_name = get_profile_state_filepath(profile_name)
+    LOG.debug('Saving to location %s', file_name)
+    LOG.debug('Last update time is %s', last_update_time)
 
     with open(file_name, 'a') as file_handle:
         file_handle.write(last_update_time.isoformat() + '\n')
@@ -261,29 +286,44 @@ def sync(config, last_update_time):
 
     handler = TargetHandler(config)
 
-    oauth_token = get_oauth_token(config.panopto_site_address, config.panopto_oauth_credentials)
+    start_time = datetime.utcnow()
+    oauth_token, expiration = None, None
+
     next_token = None
     exception = None
-    start_time = datetime.utcnow()
+
     new_last_update_time = last_update_time
 
     handler.initialize()
 
     try:
         for _ in range(1000):
+            # Renew the oauth token if needed
+            oauth_token, expiration = renew_oauth_token_if_needed(
+                config.panopto_site_address, config.panopto_oauth_credentials, oauth_token, expiration)
+            # Hack: The API is currently returning a second rounded next token which can lead to issues if there has
+            # been a bulk update on a site and more than 100 videos have the same update time rounded to the nearest
+            # second. So we'll workaround this here for now by always omitting the next token and favoring instead
+            # always using new_last_update_time; fix next token as None.
             get_ids_response = get_ids_to_update(oauth_token, config.panopto_site_address, last_update_time, next_token)
             for update in get_ids_response['Updates']:
+                # Renew the oauth token if needed
+                oauth_token, expiration = renew_oauth_token_if_needed(
+                    config.panopto_site_address, config.panopto_oauth_credentials, oauth_token, expiration)
 
                 video_id = update['VideoId']
 
                 update_time = parse_api_update_time(update['UpdateTime'])
+                LOG.info('Syncing video last updated %s', update_time)
 
                 sync_video_by_id(handler, oauth_token, config, video_id)
                 new_last_update_time = update_time
                 # Sleep to avoid getting throttled by the API
                 time.sleep(config.sleep_seconds)
             next_token = get_ids_response['NextToken']
-            if next_token is None:
+            if next_token:
+                LOG.info('Pagination continued at token: %s', next_token)
+            else:
                 LOG.info('Sync complete')
                 break
         else:
@@ -296,8 +336,10 @@ def sync(config, last_update_time):
     finally:
         handler.teardown()
 
+    # When there is no exception, we can take max of the new_last_update_time and the
+    # start time of the loop as the new base point
     if exception is None:
-        new_last_update_time = start_time
+        new_last_update_time = max(new_last_update_time, start_time)
 
     return new_last_update_time, exception
 
