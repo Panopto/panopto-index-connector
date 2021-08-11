@@ -146,7 +146,10 @@ def parse_api_update_time(update_time_str):
     update_time_str = update_time_str.rstrip('Z')
     # Strip off the floats as datetime package only accepts exactly 6 digits of float,
     # and we don't need that level of precision
-    update_time_str, second_decimal_str = update_time_str.split('.')
+    split = update_time_str.split('.')
+    assert len(split) in (1, 2), 'Unexpected time format: %s' % update_time_str
+    update_time_str = split[0]
+    second_decimal_str = split[1] if len(split) == 2 else '0'
     # Parse the last time the document was updated by panopto API format
     update_time = datetime.strptime(update_time_str, '%Y-%m-%dT%H:%M:%S')
     # Python datetime strptime only supports microsecond format; so we process the seconds string separately
@@ -332,6 +335,7 @@ def sync(config, last_update_time):
         LOG.exception('Received error response %s | %s', ex.response.status_code, ex.response.text)
         exception = ex
     except Exception as ex:  # pylint: disable=broad-except
+        LOG.exception('Received general exception')
         exception = ex
     finally:
         handler.teardown()
