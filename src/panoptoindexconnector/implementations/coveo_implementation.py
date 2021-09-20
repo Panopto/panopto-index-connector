@@ -126,7 +126,7 @@ def push_content_data(target_content, config):
     field_mapping = config.field_mapping
 
     url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=%s' % (
-        _get_document_id(config.panopto_site_address, target_content[field_mapping['Id']]))
+        target_content[field_mapping['Url']])
     _ = _send_coveo_request(config, url, 'put', json=target_content)
 
 
@@ -171,7 +171,7 @@ def delete_from_target(video_id, config):
     """
 
     url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=' + \
-        _get_document_id(config.panopto_site_address, video_id)
+        target_content[field_mapping['Url']]
     _ = _send_coveo_request(config, url, 'delete')
 
 
@@ -252,14 +252,6 @@ def should_map_security(key):
     T/f whether the user needs to be mapped
     """
     return key not in SECURITY_IDS_MAPPED_TO_PROVIDER
-
-
-def _get_document_id(panopto_site_address, vid):
-    """
-    Coveo document id must be formatted as a uri
-    """
-    return '{site}/Panopto/Pages/Viewer.aspx?id={id}'.format(
-        site=panopto_site_address, id=vid)
 
 
 def _get_default_headers(api_key):
