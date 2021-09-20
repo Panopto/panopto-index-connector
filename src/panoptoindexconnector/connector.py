@@ -374,7 +374,7 @@ def main():
     """
 
     args = parse_args()
-    set_logger(args.logging_level)
+    set_logger(args.logging_level, args.log_file)
 
     if args.configuration_file:
         config = ConnectorConfig(args.configuration_file)
@@ -412,6 +412,7 @@ def parse_args():
 
     # Logging levels, local and third party
     parser.add_argument('--logging-level', choices=['warn', 'info', 'debug'], default='info')
+    parser.add_argument('--log-file', default='connector.log')
 
     parser.add_argument('-c', '--configuration-file', required=False, help='Path to a config file')
     parser.add_argument('--rebuild', action='store_true', help='Trigger a rebuild by clearing the state file')
@@ -463,7 +464,7 @@ def prompt_user_with_autocomplete(prompt):
     return input(prompt)
 
 
-def set_logger(logging_level):
+def set_logger(logging_level, log_file):
     """
     Set the logging level and format
     """
@@ -474,7 +475,14 @@ def set_logger(logging_level):
 
     # Set logging level
     logging_level = logging.getLevelName(logging_level.upper())
-    logging.basicConfig(format=log_format, level=logging_level, datefmt=log_date_format)
+    logging.basicConfig(
+        format=log_format,
+        level=logging_level,
+        datefmt=log_date_format,
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ])
 
 
 if __name__ == '__main__':
