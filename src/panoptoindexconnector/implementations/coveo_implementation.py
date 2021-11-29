@@ -74,10 +74,10 @@ def convert_to_target(panopto_content, config):
     target_content = {
         field_mapping['Id']: panopto_content['Id'],
         'documenttype': 'Panopto',
-        field_mapping['Info']['Language']: panopto_content['VideoContent']['Language'],
-        field_mapping['Info']['Title']: panopto_content['VideoContent']['Title'],
     }
 
+    for key, target_field in field_mapping['Info'].items():
+        target_content[target_field] = panopto_content['VideoContent'][key]
     for key, target_field in field_mapping['Metadata'].items():
         if panopto_content['VideoContent'][key]:
             target_content[target_field] = panopto_content['VideoContent'][key]
@@ -126,7 +126,7 @@ def push_content_data(target_content, config):
     field_mapping = config.field_mapping
 
     url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=%s' % (
-        target_content[field_mapping['Url']])
+        target_content[field_mapping['Info']['Url']])
     _ = _send_coveo_request(config, url, 'put', json=target_content)
 
 
@@ -170,9 +170,12 @@ def delete_from_target(video_id, config):
     Implement this method to push converted content to the target
     """
 
-    url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=' + \
-        target_content[field_mapping['Url']]
-    _ = _send_coveo_request(config, url, 'delete')
+    for idtype in ['id', 'pid']:
+        video_url = '{site}/Panopto/Pages/Viewer.aspx?{idtype}={id}'.format(
+            site=config.panopto_site_address, idtype=idtype, id=video_id)
+        url = '{coveourl}/push/v1/organizations/{org}/sources/{source}/documents?documentId=' + \
+            video_url
+        _ = _send_coveo_request(config, url, 'delete')
 
 
 #
