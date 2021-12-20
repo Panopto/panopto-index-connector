@@ -1,0 +1,76 @@
+{
+    "BaseType": "microsoft.graph.externalItem",
+    "Properties": [
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [
+                0
+            ],
+            "Name": "title",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [],
+            "Name": "description",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": false,
+            "Labels": [
+                1
+            ],
+            "Name": "uri",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": false,
+            "Labels": [],
+            "Name": "folder",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": false,
+            "Labels": [],
+            "Name": "thumbnailUrl",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        }
+    ],
+    "Id": null,
+    "ODataType": null,
+    "AdditionalData": {
+        "@odata.context": {
+            "ValueKind": 3
+        }
+    }
+}

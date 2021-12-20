@@ -1,0 +1,54 @@
+#
+# Panopto index connector configuration file
+#
+
+
+# The address to your panopto site
+panopto_site_address: https://your.site.panopto.com
+
+# The oauth credentials to connect to the panopto API
+panopto_oauth_credentials:
+    username: myconnectoruser
+    password: mypassword
+    client_id: 123
+    client_secret: 456
+    grant_type: password
+
+# Your index integration target endpoint
+target_address: https://graph.microsoft.com/v1.0/external/connections
+
+# Your graph data for the connector
+target_credentials:
+    tenant_id: 00000000-0000-0000-0000-000000000000
+    client_id: 00000000-0000-0000-0000-000000000000
+    client_secret: myclientsecret
+    grant_type: client_credentials
+    scopes: ["https://graph.microsoft.com/.default"]
+    authority: https://login.microsoftonline.com
+
+# Your graph connection (connector) that will be used to push Panopto items to
+target_connection:
+    # 'id' can only have ASCII alphanumeric characters and no empty spaces.
+    id: sampleConnectionId
+    name: Sample connection name
+    description: Sample connection description
+
+# The name of your implementation
+target_implementation: graph_implementation
+
+# Define the mapping from Panopto fields to the target field names
+field_mapping:
+
+    # Id in panopto maps to id in graph
+    Id: id
+
+    # Top level data
+    Info:
+        Title: title
+        Url: uri
+
+    # Content data
+    Metadata:
+        Folder: folder
+        ThumbnailUrl: thumbnailUrl
+        Summary: description

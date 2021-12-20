@@ -32,9 +32,9 @@ def data_files():
     """
     Translates the manifest into the datafiles
     """
-    # with open(os.path.join(DIR, 'MANIFEST')) as manifest:
-        # return [line.strip() for line in manifest if line.strip() and '#' not in line]
-    return []
+    with open(os.path.join(DIR, 'MANIFEST')) as manifest:
+        return [line.strip() for line in manifest if line.strip() and '#' not in line]
+
 
 def restore_icon(res_dir=RES_DIR):
     """
