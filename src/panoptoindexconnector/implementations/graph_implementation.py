@@ -155,7 +155,7 @@ def set_main_fields_to_new_object(video_content):
         "id": video_content["Id"],
         "content": {
             "type": "text",
-            "value": "{0}{1}".format(video_content["Title"], " " + video_content["Summary"] if video_content["Summary"] else "")
+            "value": "{0} {1}".format(video_content["Id"], video_content["Title"])
         }
     }
 
@@ -214,21 +214,21 @@ def get_unique_principals(panopto_content):
     return unique_content_principals
 
 
-def get_user_unique_not_panopto_principals(panopto_content):
+def get_unique_external_user_principals(panopto_content):
     """
     Get unique user not Panopto principals to avoid duplicate permissions on synced item
     """
 
-    unique_user_not_panopto_content_principals = []
+    unique_external_user_principals = []
 
-    for principal in panopto_content['VideoContent']['Principals']:
-        if (principal not in unique_user_not_panopto_content_principals and
-                principal.get('Username') and principal.get('Email') and
-                principal.get('IdentityProvider') and principal.get('IdentityProvider') != 'Panopto'):
+    for p in panopto_content['VideoContent']['Principals']:
+        if (p not in unique_external_user_principals and
+                p.get('Username') and p.get('Email') and
+                p.get('IdentityProvider') and p.get('IdentityProvider') != 'Panopto'):
 
-            unique_user_not_panopto_content_principals.append(principal)
+            unique_external_user_principals.append(p)
 
-    return unique_user_not_panopto_content_principals
+    return unique_external_user_principals
 
 
 def is_public_or_all_users_principals(panopto_content):
@@ -250,7 +250,7 @@ def is_user_principals(panopto_content):
     Returns: True or False
     """
 
-    return True if get_user_unique_not_panopto_principals(panopto_content) else False
+    return bool(get_unique_external_user_principals(panopto_content))
 
 
 def set_principals_to_all(config, target_content):
@@ -272,7 +272,7 @@ def set_principals_to_user(config, panopto_content, target_content):
 
     target_content["acl"] = []
 
-    for principal in get_user_unique_not_panopto_principals(panopto_content):
+    for principal in get_unique_external_user_principals(panopto_content):
         aad_user_info = get_aad_user_info(config, principal)
 
         if aad_user_info:

@@ -46,9 +46,13 @@ field_mapping:
     Info:
         Title: title
         Url: uri
+        ThumbnailUrl: thumbnailUrl
 
     # Content data
     Metadata:
         Folder: folder
-        ThumbnailUrl: thumbnailUrl
         Summary: description
+        MachineTranscription: machineTranscription
+        HumanTranscription: humanTranscription
+        ScreenCapture: screenCapture
+        Presentation: presentation

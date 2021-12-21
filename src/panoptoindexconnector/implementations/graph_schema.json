@@ -7,6 +7,17 @@
             "IsRefinable": false,
             "IsRetrievable": true,
             "IsSearchable": true,
+            "Name": "id",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
             "Labels": [
                 0
             ],
@@ -46,7 +57,7 @@
             "IsQueryable": true,
             "IsRefinable": false,
             "IsRetrievable": true,
-            "IsSearchable": false,
+            "IsSearchable": true,
             "Labels": [],
             "Name": "folder",
             "Type": 0,
@@ -61,6 +72,54 @@
             "IsSearchable": false,
             "Labels": [],
             "Name": "thumbnailUrl",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [],
+            "Name": "machineTranscription",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [],
+            "Name": "humanTranscription",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [],
+            "Name": "screenCapture",
+            "Type": 0,
+            "AdditionalData": null,
+            "ODataType": null
+        },
+        {
+            "Aliases": [],
+            "IsQueryable": true,
+            "IsRefinable": false,
+            "IsRetrievable": true,
+            "IsSearchable": true,
+            "Labels": [],
+            "Name": "presentation",
             "Type": 0,
             "AdditionalData": null,
             "ODataType": null
