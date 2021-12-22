@@ -17,7 +17,7 @@ panopto_oauth_credentials:
 # Your index integration target endpoint
 target_address: https://graph.microsoft.com/v1.0/external/connections
 
-# Your graph data for the connector
+# Your Microsoft graph data for the connector
 target_credentials:
     tenant_id: 00000000-0000-0000-0000-000000000000
     client_id: 00000000-0000-0000-0000-000000000000
@@ -26,7 +26,7 @@ target_credentials:
     scopes: ["https://graph.microsoft.com/.default"]
     authority: https://login.microsoftonline.com
 
-# Your graph connection (connector) that will be used to push Panopto items to
+# Your Microsoft graph connection (connector) that will be used to push Panopto items to
 target_connection:
     # 'id' can only have ASCII alphanumeric characters and no empty spaces.
     id: sampleConnectionId
@@ -34,12 +34,17 @@ target_connection:
     description: Sample connection description
 
 # The name of your implementation
-target_implementation: graph_implementation
+target_implementation: microsoft_graph_implementation
+
+# Set to "true" if we should not push permissions to the target;
+# often used with the principal_allowlist to control permissions by
+# what is synced rather than matching the ID Provider on the target
+skip_permissions: false
 
 # Define the mapping from Panopto fields to the target field names
 field_mapping:
 
-    # Id in panopto maps to id in graph
+    # Id in panopto maps to id in Microsoft graph
     Id: id
 
     # Top level data

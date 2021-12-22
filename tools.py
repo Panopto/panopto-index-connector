@@ -1,10 +1,6 @@
-
 import os
 import posixpath
-try:
-    from urllib import urlretrieve
-except ImportError:
-    from urllib.request import urlretrieve
+import requests
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -48,9 +44,16 @@ def restore_icon(res_dir=RES_DIR):
     url = 'https://www.panopto.com/wp-content/themes/panopto/library/images/favicons/favicon.ico'
     logo = os.path.join(res_dir, 'panopto.ico')
 
-    urlretrieve(url, logo)
+    # Get favicon icon and store to res\panopto.ico
+    r = requests.get(url)
 
-    return to_posix(logo)
+    if r.status_code == 200:
+        with open(logo, 'wb') as f:
+            f.write(r.content)
+
+        return to_posix(logo)
+
+    return ""
 
 
 #

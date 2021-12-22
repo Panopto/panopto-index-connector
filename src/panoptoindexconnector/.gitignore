@@ -2,6 +2,6 @@
 *.yaml
 !attivio.yaml
 !coveo.yaml
-!graph.yaml
+!microsoft_graph.yaml
 !debug.yaml
 !template.yaml

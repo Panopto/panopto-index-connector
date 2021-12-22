@@ -43,7 +43,11 @@ def convert_to_target(panopto_content, config):
     set_properties(field_mapping, panopto_content, target_content)
 
     # Set acl (account controll list)
-    set_principals(config, panopto_content, target_content)
+    principals_are_set = set_principals(config, panopto_content, target_content)
+
+    # If none of principals are set to content, set skip_sync property to skip pushing content to target
+    if not principals_are_set:
+        target_content["skip_sync"] = True
 
     LOG.debug('Converted document is %s', json.dumps(target_content, indent=2))
 
@@ -55,8 +59,7 @@ def push_to_target(target_content, config):
     Push converted Panopto content to the target
     """
 
-    # If target content is None (case when none of permissions are set skip sync)
-    if not target_content:
+    if target_content.get("skip_sync"):
         LOG.warn("Content has been skipped for sync to target")
         return
 
@@ -126,7 +129,7 @@ def initialize(config):
     try:
         ensure_connection_availability(config)
     except Exception as ex:
-        LOG.error(f'Error occurred while initializing graph connector!. Error: {ex}')
+        LOG.error(f'Error occurred while initializing microsoft graph connector!. Error: {ex}')
         raise
 
 
@@ -183,7 +186,7 @@ def set_properties(field_mapping, panopto_content, target_content):
 def set_principals(config, panopto_content, target_content):
     """
     Set principals - Everyone (in tenant), User or Group.
-    If none of permissions are set, target_content will be set to None and skipped for sync
+    Returns: True if any of principals are set, otherwise False
     """
 
     if not config.skip_permissions:
@@ -194,15 +197,16 @@ def set_principals(config, panopto_content, target_content):
     else:
         set_principals_to_all(config, target_content)
 
-    if not target_content["acl"]:
-        target_content = None
+    if not target_content.get("acl"):
+        LOG.warn("Target content will be skipped to push to target since none of principals have applied!")
+        return False
 
-        LOG.warn("Target content will be skipped to push to target since none of permissions have applied!")
+    return True
 
 
 def get_unique_principals(panopto_content):
     """
-    Get unique principals to avoid duplicate permissions on synced item
+    Get unique principals to avoid duplicate principals on synced item
     """
 
     unique_content_principals = []
@@ -216,7 +220,7 @@ def get_unique_principals(panopto_content):
 
 def get_unique_external_user_principals(panopto_content):
     """
-    Get unique user not Panopto principals to avoid duplicate permissions on synced item
+    Get unique external Panopto principals to avoid duplicate principals on synced item
     """
 
     unique_external_user_principals = []
@@ -518,7 +522,7 @@ def register_schema_for_connection(config):
         'Content-Type': 'application/json'
     }
 
-    schema_path = os.path.join(APP_TEMP_DIR, 'graph_schema.json')
+    schema_path = os.path.join(APP_TEMP_DIR, 'microsoft_graph_schema.json')
 
     with open(schema_path, "r") as schema_file:
         schema_json = json.load(schema_file)

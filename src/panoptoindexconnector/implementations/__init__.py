@@ -5,6 +5,6 @@ The implementations and their configuration files live here.
 import panoptoindexconnector.implementations.attivio_implementation
 import panoptoindexconnector.implementations.coveo_implementation
 import panoptoindexconnector.implementations.debug_implementation
-import panoptoindexconnector.implementations.graph_implementation
 import panoptoindexconnector.implementations.iterator_implementation
+import panoptoindexconnector.implementations.microsoft_graph_implementation
 import panoptoindexconnector.implementations.template_implementation  # noqa
