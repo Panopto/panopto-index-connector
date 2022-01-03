@@ -23,8 +23,9 @@ target_credentials:
     client_id: 00000000-0000-0000-0000-000000000000
     client_secret: myclientsecret
     grant_type: client_credentials
-    scopes: ["https://graph.microsoft.com/.default"]
     authority: https://login.microsoftonline.com
+    scopes:
+        - https://graph.microsoft.com/.default
 
 # Your Microsoft graph connection (connector) that will be used to push Panopto items to
 target_connection:
