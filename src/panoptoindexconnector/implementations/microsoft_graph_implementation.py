@@ -342,9 +342,21 @@ def ensure_connection_availability(config):
         if connection_response.json()["state"] == "draft":
             LOG.info("Connection is already created but not ready (Schema is not registered).")
 
+    # If request is Unauthorized
+    elif connection_response.status_code == 401:
+        LOG.error("Unable to get connection because of Unauthorized request!. " +
+                  "Please check if Client contains 'ExternalConnection.ReadWrite.OwnedBy' and " +
+                  "'ExternalItem.ReadWrite.OwnedBy' API permissions.")
+
+        connection_response.raise_for_status()
+
     # If connection doesn't exit create it
     elif connection_response.status_code == 404:
+        LOG.info("Connection doesn't exist!")
         create_connection(config)
+
+    else:
+        connection_response.raise_for_status()
 
     # Check if schema is registered for connection and register it if not
     ensure_schema_for_connection(config)
@@ -414,6 +426,8 @@ def get_connection(config):
     Get connection
     Returns: Response
     """
+
+    LOG.info("Getting connection: %s", config.target_connection["id"])
 
     # Get token
     access_token = get_access_token(config)
