@@ -119,6 +119,10 @@ class ConnectorConfig:
         return self._yaml_config['target_credentials']
 
     @property
+    def target_connection(self):
+        return self._yaml_config['target_connection']
+
+    @property
     def target_implementation(self):
         return self._yaml_config['target_implementation']
 
@@ -127,5 +131,6 @@ class InvalidConfiguration(Exception):
     """
     The configuration specified for the connector is not valid yaml
     """
+
     def __init__(self, message):
         super().__init__('Parse failure: ' + message)
