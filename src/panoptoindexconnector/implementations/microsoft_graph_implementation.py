@@ -20,6 +20,8 @@ LOG = logging.getLogger(__name__)
 APP_TEMP_DIR = str.lower(DIR).replace("panoptoindexconnector\implementations", "")
 TOKEN_CACHE = os.path.join(APP_TEMP_DIR, 'token_cache.bin')
 
+# Stored users to prevent unnecessary API calls to get id
+users = []
 
 #########################################################################
 #
@@ -277,15 +279,45 @@ def set_principals_to_user(config, panopto_content, target_content):
     target_content["acl"] = []
 
     for principal in get_unique_external_user_principals(panopto_content):
-        aad_user_info = get_aad_user_info(config, principal)
 
-        if aad_user_info:
+        principal_user_email = principal.get("Email")
+
+        # Try to get user id from users list
+        user_id = get_user_id_from_users_list(principal_user_email)
+
+        # If user doean't exist in list, try to get from AAD calling API
+        if not user_id:
+            # Get user from AAD
+            aad_user_info = get_aad_user_info(config, principal)
+
+            if aad_user_info:
+                user_id = aad_user_info["id"]
+
+            # Add user to list to prevent further API calls for the same user
+            users.append({principal_user_email: user_id})
+
+        if user_id:
             acl = {
                 "type": "user",
-                "value": aad_user_info["id"],
+                "value": user_id,
                 "accessType": "grant"
             }
             target_content["acl"].append(acl)
+
+
+def get_user_id_from_users_list(user_email):
+    """
+    Get user id from users list by user e-mail to prevent unnecessary API call to AAD
+    """
+
+    user_id = None
+
+    for user in users:
+        if user.get(user_email):
+            user_id = user.get(user_email)
+            break
+
+    return user_id
 
 
 def get_aad_user_info(config, principal):
