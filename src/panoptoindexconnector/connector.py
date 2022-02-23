@@ -22,6 +22,7 @@ import requests
 from panoptoindexconnector.connector_config import ConnectorConfig, InvalidConfiguration
 from panoptoindexconnector.helpers import format_request_secure
 from panoptoindexconnector.target_handler import TargetHandler
+from panoptoindexconnector.custom_exceptions import CustomExceptions
 
 
 # 2 minute grace period on oauth expiration
@@ -297,9 +298,9 @@ def sync(config, last_update_time):
 
     new_last_update_time = last_update_time
 
-    handler.initialize()
-
     try:
+        handler.initialize()
+
         for _ in range(1000):
             # Renew the oauth token if needed
             oauth_token, expiration = renew_oauth_token_if_needed(
@@ -333,6 +334,8 @@ def sync(config, last_update_time):
             LOG.warning('Did not complete a sync in 1000 passes')
     except requests.exceptions.HTTPError as ex:
         LOG.exception('Received error response %s | %s', ex.response.status_code, ex.response.text)
+        exception = ex
+    except CustomExceptions.QuotaLimitExceededError as ex:
         exception = ex
     except Exception as ex:  # pylint: disable=broad-except
         LOG.exception('Received general exception')
