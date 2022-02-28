@@ -129,6 +129,10 @@ def initialize(config):
     """
 
     try:
+        # Clear users list before each sync attempt to keep up to date AAD users info
+        users.clear()
+
+        # Ensure connection for sync
         ensure_connection_availability(config)
     except Exception as ex:
         LOG.error(f'Error occurred while initializing microsoft graph connector!. Error: {ex}')
