@@ -21,7 +21,7 @@ APP_TEMP_DIR = str.lower(DIR).replace("panoptoindexconnector\implementations", "
 TOKEN_CACHE = os.path.join(APP_TEMP_DIR, 'token_cache.bin')
 
 # Stored users to prevent unnecessary API calls to get id
-users = []
+users = {}
 
 #########################################################################
 #
@@ -286,8 +286,8 @@ def set_principals_to_user(config, panopto_content, target_content):
 
         principal_user_email = principal.get("Email")
 
-        # Try to get user id from users list
-        user_id = get_user_id_from_users_list(principal_user_email)
+        # Try to get user id from users dictionary
+        user_id = users.get(principal_user_email)
 
         # If user doean't exist in list, try to get from AAD calling API
         if not user_id:
@@ -298,7 +298,7 @@ def set_principals_to_user(config, panopto_content, target_content):
                 user_id = aad_user_info["id"]
 
             # Add user to list to prevent further API calls for the same user
-            users.append({principal_user_email: user_id})
+            users[principal_user_email] = user_id
 
         if user_id:
             acl = {
@@ -307,21 +307,6 @@ def set_principals_to_user(config, panopto_content, target_content):
                 "accessType": "grant"
             }
             target_content["acl"].append(acl)
-
-
-def get_user_id_from_users_list(user_email):
-    """
-    Get user id from users list by user e-mail to prevent unnecessary API call to AAD
-    """
-
-    user_id = None
-
-    for user in users:
-        if user.get(user_email):
-            user_id = user.get(user_email)
-            break
-
-    return user_id
 
 
 def get_aad_user_info(config, principal):
