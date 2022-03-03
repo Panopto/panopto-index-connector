@@ -29,7 +29,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 This product will connect Panopto to your external search index. This can be done by either leveraging a current connector implementation, or creating your own (more on implementations below). The following sections cover how to install and run the Panopto Index Connector, how to configure an implementation for your schema, and how to develop a custom implementation if need be.
 
-## Installation
+## Installation for Microsoft 365
+Please follow [this document](https://docs.google.com/document/d/1CbnS4VnoKponmPx0CaxncpjPRpT7NEJ50XamLHTm4J4/edit?usp=sharing).
+
+## Installation for platforms other than Microsoft 365
 
 ### Method 1: From official exe (recommended for out of the box)
 If you do not need to create or customize a connector's implementation, and you are running on Windows, you may use the officially published `panopto-connector.exe` in the [releases tab](https://github.com/Panopto/panopto-index-connector/releases/). For other use cases, use methods 2 or 3.
@@ -258,6 +261,10 @@ field_mapping:
 ```
 
 It assumes that Panopto user names map to Attivio user names, as will be the case in the presence of a shared identity provider. The Panopto API returns the username, identity provider, and email of each user with permission to search for a given video, and you may need to customize the permissions handling in `attivio_implementation.py` to match your Attivio configuration (see [below](building-or-customizing-an-implementation)).
+
+### The Microsoft Graph Connector implementation
+
+The Microsoft Graph Connector implementation, under `microsoft_graph_implementation.py`, works out of the box with Microsoft 365. To configure this implementation, you'll need to configure the values in `microsoft_graph.yaml`.
 
 ### Developing or customizing an implementation
 
