@@ -42,6 +42,10 @@ target_implementation: microsoft_graph_implementation
 # what is synced rather than matching the ID Provider on the target
 skip_permissions: false
 
+# Sleep time to avoid limitation between synced items per second.
+# Microsoft Graph Connector has limitation of 4 entries per second.
+sleep_seconds: 0.25
+
 # Define the mapping from Panopto fields to the target field names
 field_mapping:
 
