@@ -99,10 +99,9 @@ def push_to_target(target_content, config):
             if innerError.get('code') == "TenantQuotaExceeded":
                 raise CustomExceptions.QuotaLimitExceededError(innerError.get("message"))
 
-        response.raise_for_status()
+        log_error_for_not_pushed_content(content_id, target_content, response.text)
     else:
-        LOG.error(f"Content ({content_id}) has NOT been pushed to target! " +
-                  f"Target Content: {target_content}. Response: {response.text}")
+        log_error_for_not_pushed_content(content_id, target_content, response.text)
 
 
 def delete_from_target(video_id, config):
@@ -623,3 +622,12 @@ def check_connection_operation_status(config, operation_url):
 
         # Wait 3 seconds until next check
         time.sleep(3)
+
+
+def log_error_for_not_pushed_content(content_id, target_content, response_text):
+    """
+    Logs error for not pushed content to target
+    """
+
+    LOG.error(f"Content ({content_id}) has NOT been pushed to target! " +
+              f"Target Content: {target_content}. Response: {response_text}")
