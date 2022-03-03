@@ -14,6 +14,9 @@ import time
 import requests
 import msal
 
+# Local
+from panoptoindexconnector.custom_exceptions import CustomExceptions
+
 # Global constants
 DIR = os.path.dirname(os.path.realpath(__file__))
 LOG = logging.getLogger(__name__)
@@ -87,9 +90,18 @@ def push_to_target(target_content, config):
 
     if response.status_code == 200:
         LOG.info(f"Content ({content_id}) has been pushed to target!")
+    # If request is forbidden
+    elif response.status_code == 403:
+        error = response.json()["error"]
+
+        if error and error.get("innerError"):
+            innerError = error.get("innerError")
+            if innerError.get('code') == "TenantQuotaExceeded":
+                raise CustomExceptions.QuotaLimitExceededError(innerError.get("message"))
+
+        log_error_for_not_pushed_content(content_id, target_content, response.text)
     else:
-        LOG.error(f"Content ({content_id}) has NOT been pushed to target! " +
-                  f"Target Content: {target_content}. Response: {response.text}")
+        log_error_for_not_pushed_content(content_id, target_content, response.text)
 
 
 def delete_from_target(video_id, config):
@@ -134,6 +146,8 @@ def initialize(config):
 
         # Ensure connection for sync
         ensure_connection_availability(config)
+    except CustomExceptions.QuotaLimitExceededError:
+        raise
     except Exception as ex:
         LOG.error(f'Error occurred while initializing microsoft graph connector!. Error: {ex}')
         raise
@@ -353,12 +367,14 @@ def ensure_connection_availability(config):
             LOG.info("Connection is already created and Ready!")
             return
 
-        # If connection limit exceeded inform user and return from method
+        # If connection limit exceeded inform user and stop further processing by raising error
         if connection_response.json()["state"] == "limitExceeded":
-            LOG.warn("Connection is already created but LIMIT EXCEEDED! " +
-                     "Connection quota must be extended to be able to push new items. " +
-                     "Updating or deleting items will work.")
-            return
+            LOG.error("Connection is already created but LIMIT EXCEEDED!")
+
+            raise CustomExceptions.QuotaLimitExceededError(
+                "Tenant quota has been reached! " +
+                "To continue adding items to the connection the tenant admin must contact Microsoft or delete some content."
+            )
 
         if connection_response.json()["state"] == "draft":
             LOG.info("Connection is already created but not ready (Schema is not registered).")
@@ -606,3 +622,12 @@ def check_connection_operation_status(config, operation_url):
 
         # Wait 3 seconds until next check
         time.sleep(3)
+
+
+def log_error_for_not_pushed_content(content_id, target_content, response_text):
+    """
+    Logs error for not pushed content to target
+    """
+
+    LOG.error(f"Content ({content_id}) has NOT been pushed to target! " +
+              f"Target Content: {target_content}. Response: {response_text}")
