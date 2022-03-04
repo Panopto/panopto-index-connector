@@ -264,7 +264,8 @@ It assumes that Panopto user names map to Attivio user names, as will be the cas
 
 ### The Microsoft Graph Connector implementation
 
-The Microsoft Graph Connector implementation, under `microsoft_graph_implementation.py`, works out of the box with Microsoft 365. To configure this implementation, you'll need to configure the values in `microsoft_graph.yaml`.
+The Microsoft Graph Connector implementation, under `microsoft_graph_implementation.py`, works out of the box with Microsoft 365.
+To configure this implementation, please refer [this document](https://docs.google.com/document/d/1CbnS4VnoKponmPx0CaxncpjPRpT7NEJ50XamLHTm4J4/edit?usp=sharing).
 
 ### Developing or customizing an implementation
 
