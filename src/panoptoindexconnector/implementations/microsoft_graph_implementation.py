@@ -299,12 +299,13 @@ def set_principals_to_user(config, panopto_content, target_content):
     for principal in get_unique_external_user_principals(panopto_content):
 
         principal_user_email = principal.get("Email")
+        user_id = None
 
         # Try to get user id from users dictionary
-        user_id = users.get(principal_user_email)
-
-        # If user doean't exist in list, try to get from AAD calling API
-        if not user_id:
+        if principal_user_email in users:
+            user_id = users.get(principal_user_email)
+        # If user doesn't exist in dictionary, try to get from AAD calling API
+        else:
             # Get user from AAD
             aad_user_info = get_aad_user_info(config, principal)
 
