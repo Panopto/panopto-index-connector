@@ -43,7 +43,6 @@ target_implementation: microsoft_graph_implementation
 skip_permissions: false
 
 # Sleep time to avoid limitation between synced items per second.
-# Microsoft Graph Connector has limitation of 4 entries per second.
 # Panopto API allows 100 request per minute.
 sleep_seconds: 0.6
 
