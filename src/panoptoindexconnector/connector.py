@@ -17,6 +17,7 @@ import time
 # Third party
 import readline
 import requests
+from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
 # Local
 from panoptoindexconnector.connector_config import ConnectorConfig, InvalidConfiguration
@@ -388,6 +389,8 @@ def main():
 
     # Trim extension and folder to generate a unique profile name
     profile_name = os.path.split(os.path.splitext(config.config_file_path)[0])[1]
+    LOG.info('*** Connector File Version: %s ***', get_version_number("FileVersion"))
+    LOG.info('*** Connector Product Version: %s ***', get_version_number("ProductVersion"))
     LOG.info('Starting connector profile %s with configuration \n%s', profile_name, config)
 
     rebuild = args.rebuild
@@ -487,6 +490,22 @@ def set_logger(logging_level, log_file):
             logging.FileHandler(log_file),
             logging.StreamHandler()
         ])
+
+
+def get_version_number(property_name):
+    """
+    Get File or Product version number (x.x.x.x)
+    """
+
+    try:
+        info = GetFileVersionInfo (sys.executable, "\\")
+
+        ms = info['{0}MS'.format(property_name)]
+        ls = info['{0}LS'.format(property_name)]
+
+        return "{0}.{1}.{2}.{3}".format(HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls))
+    except:
+        return "Unknown"
 
 
 if __name__ == '__main__':
