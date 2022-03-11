@@ -13,7 +13,9 @@ def readme():
     with open('README.md') as readme_file:
         return readme_file.read()
 
+
 REQUIRES = [
+    'msal',
     'pyreadline',
     'requests',
     'ruamel.yaml<=15.66.0',
@@ -26,7 +28,7 @@ setup(
     author_email='sbianamara@panopto.com',
     description=('A general application for connecting a panopto search index to an external source'),
     long_description=readme(),
-    keywords=['python', 'panopto', 'connector', 'attivio', 'coveo'],
+    keywords=['python', 'panopto', 'connector', 'attivio', 'coveo', 'microsoft_graph'],
 
     install_requires=REQUIRES,
     package_data={
