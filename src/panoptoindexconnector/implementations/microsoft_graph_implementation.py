@@ -16,6 +16,7 @@ import msal
 
 # Local
 from panoptoindexconnector.custom_exceptions import CustomExceptions
+from panoptoindexconnector.enums import UsernameMapping
 
 # Global constants
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -143,6 +144,9 @@ def initialize(config):
     try:
         # Clear users list before each sync attempt to keep up to date AAD users info
         users.clear()
+
+        # Validate microsoft_graph.yaml configuration file
+        validate_configuration(config)
 
         # Ensure connection for sync
         ensure_connection_availability(config)
@@ -298,22 +302,22 @@ def set_principals_to_user(config, panopto_content, target_content):
 
     for principal in get_unique_external_user_principals(panopto_content):
 
-        principal_user_email = principal.get("Email")
+        panopto_username = get_panopto_username(principal)
         user_id = None
 
         # Try to get user id from users dictionary
-        if principal_user_email in users:
-            user_id = users.get(principal_user_email)
+        if panopto_username in users:
+            user_id = users.get(panopto_username)
         # If user doesn't exist in dictionary, try to get from AAD calling API
         else:
             # Get user from AAD
-            aad_user_info = get_aad_user_info(config, principal)
+            aad_user_info = get_aad_user_info(config, panopto_username)
 
             if aad_user_info:
                 user_id = aad_user_info["id"]
 
             # Add user to list to prevent further API calls for the same user
-            users[principal_user_email] = user_id
+            users[panopto_username] = user_id
 
         if user_id:
             acl = {
@@ -324,11 +328,25 @@ def set_principals_to_user(config, panopto_content, target_content):
             target_content["acl"].append(acl)
 
 
-def get_aad_user_info(config, principal):
+def get_panopto_username(principal):
+    """
+    Get Panopto username from principal
+    """
+
+    panopto_username = principal.get("Username")
+    if "\\" in panopto_username:
+        panopto_username = panopto_username.split("\\")[1]
+
+    return panopto_username
+
+
+def get_aad_user_info(config, panopto_username):
     """
     Get user info from azure active directory by email
     Returns: If found returns json response, else returns None
     """
+
+    aad_user_info = None
 
     # Get token
     token = get_access_token(config)
@@ -338,17 +356,42 @@ def get_aad_user_info(config, principal):
         'Authorization': f'Bearer {token}'
     }
 
-    url = "https://graph.microsoft.com/v1.0/users/{0}".format(
-        principal.get("Email"))
+    # Set filter parameter to get azure AD user by userPrincipalName or mail
+    params = {
+        '$filter': f"{config.panopto_username_mapping} eq '{panopto_username}'"
+    }
 
-    response = requests.get(url, headers=headers)
+    url = "https://graph.microsoft.com/v1.0/users"
+
+    response = requests.get(url, headers=headers, params=params)
 
     if response.status_code == 200:
-        return response.json()
+        response_value = response.json().get("value")
+        if response_value:
+            # Filtered response returns list of values
+            # but if we filter by userPrincipalName or mail
+            # only one value can be returned, so we will take the first one
+            aad_user_info = response_value[0]
+    else:
+        LOG.warn("Unable to get aad user's info by: {0}. Response: {1}".format(panopto_username, response.json()))
 
-    LOG.warn("Unable to get user's info by email: {0}. Response: {1}".format(principal.get("Email"), response.json()))
+    return aad_user_info
 
-    return None
+
+def validate_configuration(config):
+    """
+    Validate microsoft_graph.yaml configuration file
+    """
+
+    # Validate username mapping attribute value
+    username_mapping_attribute = config.panopto_username_mapping
+    username_mapping_enum_values = set(item.value for item in UsernameMapping)
+
+    if username_mapping_attribute not in username_mapping_enum_values:
+        raise CustomExceptions.UsernameMappingError(
+            f"Panopto username mapping attribute value '{username_mapping_attribute}' is not valid! " +
+            "Please update your configuration file with valid values: 'userPrincipalName' or 'mail'. (Case sensitive)"
+        )
 
 
 def ensure_connection_availability(config):

@@ -14,6 +14,10 @@ panopto_oauth_credentials:
     client_secret: 456
     grant_type: password
 
+# The attribute from SAML Azure AD that will be used for Panopto username
+# Valid values are: userPrincipalName or mail (Case sensitive)
+panopto_username_mapping: userPrincipalName
+
 # Your index integration target endpoint
 target_address: https://graph.microsoft.com/v1.0/external/connections
 

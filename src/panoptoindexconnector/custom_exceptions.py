@@ -10,3 +10,7 @@ class CustomExceptions:
     class QuotaLimitExceededError(Error):
         """Raised when the Tenant quota has exceeded"""
         pass
+
+    class UsernameMappingError(Error):
+        """Raised when configuration username mapping value is not valid"""
+        pass
