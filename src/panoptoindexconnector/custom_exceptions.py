@@ -11,6 +11,6 @@ class CustomExceptions:
         """Raised when the Tenant quota has exceeded"""
         pass
 
-    class UsernameMappingError(Error):
-        """Raised when configuration username mapping value is not valid"""
+    class ConfigurationError(Error):
+        """Raised when configuration is not properly set"""
         pass

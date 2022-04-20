@@ -150,7 +150,8 @@ def initialize(config):
 
         # Ensure connection for sync
         ensure_connection_availability(config)
-    except CustomExceptions.QuotaLimitExceededError:
+    except (CustomExceptions.ConfigurationError, CustomExceptions.QuotaLimitExceededError):
+        # No need to log here since it will be logged in caller method ("run" method)
         raise
     except Exception as ex:
         LOG.error(f'Error occurred while initializing microsoft graph connector!. Error: {ex}')
@@ -216,7 +217,7 @@ def set_principals(config, panopto_content, target_content):
     if not config.skip_permissions:
         if is_public_or_all_users_principals(panopto_content):
             set_principals_to_all(config, target_content)
-        elif is_user_principals(panopto_content):
+        elif is_user_principals(config, panopto_content):
             set_principals_to_user(config, panopto_content, target_content)
     else:
         set_principals_to_all(config, target_content)
@@ -242,9 +243,10 @@ def get_unique_principals(panopto_content):
     return unique_content_principals
 
 
-def get_unique_external_user_principals(panopto_content):
+def get_unique_external_user_principals(config, panopto_content):
     """
-    Get unique external Panopto principals to avoid duplicate principals on synced item
+    Get unique external Panopto principals to avoid duplicate principals on synced item.
+    Identity provider will be matched with configured id provider instance name.
     """
 
     unique_external_user_principals = []
@@ -252,7 +254,8 @@ def get_unique_external_user_principals(panopto_content):
     for p in panopto_content['VideoContent']['Principals']:
         if (p not in unique_external_user_principals and
                 p.get('Username') and p.get('Email') and
-                p.get('IdentityProvider') and p.get('IdentityProvider') != 'Panopto'):
+                p.get('IdentityProvider') and
+                p.get('IdentityProvider').lower() == config.panopto_id_provider_instance_name.lower()):
 
             unique_external_user_principals.append(p)
 
@@ -272,13 +275,13 @@ def is_public_or_all_users_principals(panopto_content):
     )
 
 
-def is_user_principals(panopto_content):
+def is_user_principals(config, panopto_content):
     """
     Check is session contains user non Panopto permission
     Returns: True or False
     """
 
-    return bool(get_unique_external_user_principals(panopto_content))
+    return bool(get_unique_external_user_principals(config, panopto_content))
 
 
 def set_principals_to_all(config, target_content):
@@ -300,7 +303,7 @@ def set_principals_to_user(config, panopto_content, target_content):
 
     target_content["acl"] = []
 
-    for principal in get_unique_external_user_principals(panopto_content):
+    for principal in get_unique_external_user_principals(config, panopto_content):
 
         panopto_username = get_panopto_username(principal)
         user_id = None
@@ -383,14 +386,29 @@ def validate_configuration(config):
     Validate microsoft_graph.yaml configuration file
     """
 
-    # Validate username mapping attribute value
+    # Validate identity provider instance name - Must be set
+    if not bool(config.panopto_id_provider_instance_name):
+        raise CustomExceptions.ConfigurationError(
+            """
+            Configuration Error!
+            Panopto identity provider instance name is not set!
+            Please update your configuration file and set Panopto identity provider instance name
+            (panopto_id_provider_instance_name) that will be used for matching users with target Tenant.
+            """
+        )
+
+    # Validate username mapping attribute value - Must contains valid value
     username_mapping_attribute = config.panopto_username_mapping
     username_mapping_enum_values = set(item.value for item in UsernameMapping)
 
     if username_mapping_attribute not in username_mapping_enum_values:
-        raise CustomExceptions.UsernameMappingError(
-            f"Panopto username mapping attribute value '{username_mapping_attribute}' is not valid! " +
-            "Please update your configuration file with valid values: 'userPrincipalName' or 'mail'. (Case sensitive)"
+        raise CustomExceptions.ConfigurationError(
+            """
+            Configuration Error!
+            Panopto username mapping attribute value '{0}' is not valid!
+            Please update your configuration file and set Panopto username mapping
+            (panopto_username_mapping) with valid value: 'userPrincipalName' or 'mail' (Case sensitive).
+            """.format(username_mapping_attribute)
         )
 
 
