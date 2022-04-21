@@ -45,7 +45,6 @@ def _build_standalone_installer(name, entrypoint, icon, one_file=True):
             '--icon', icon,
             paths,
             output_type,
-            '--uac-admin',
             '--version-file', 'version_info',
             '--clean', '-y',
         ] + add_data
