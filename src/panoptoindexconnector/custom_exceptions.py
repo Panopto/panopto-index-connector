@@ -10,3 +10,7 @@ class CustomExceptions:
     class QuotaLimitExceededError(Error):
         """Raised when the Tenant quota has exceeded"""
         pass
+
+    class ConfigurationError(Error):
+        """Raised when configuration is not properly set"""
+        pass

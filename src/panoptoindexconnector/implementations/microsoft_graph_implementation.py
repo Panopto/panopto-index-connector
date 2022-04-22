@@ -16,6 +16,7 @@ import msal
 
 # Local
 from panoptoindexconnector.custom_exceptions import CustomExceptions
+from panoptoindexconnector.enums import UsernameMapping
 
 # Global constants
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -144,9 +145,13 @@ def initialize(config):
         # Clear users list before each sync attempt to keep up to date AAD users info
         users.clear()
 
+        # Validate microsoft_graph.yaml configuration file
+        validate_configuration(config)
+
         # Ensure connection for sync
         ensure_connection_availability(config)
-    except CustomExceptions.QuotaLimitExceededError:
+    except (CustomExceptions.ConfigurationError, CustomExceptions.QuotaLimitExceededError):
+        # No need to log here since it will be logged in caller method ("run" method)
         raise
     except Exception as ex:
         LOG.error(f'Error occurred while initializing microsoft graph connector!. Error: {ex}')
@@ -212,7 +217,7 @@ def set_principals(config, panopto_content, target_content):
     if not config.skip_permissions:
         if is_public_or_all_users_principals(panopto_content):
             set_principals_to_all(config, target_content)
-        elif is_user_principals(panopto_content):
+        elif is_user_principals(config, panopto_content):
             set_principals_to_user(config, panopto_content, target_content)
     else:
         set_principals_to_all(config, target_content)
@@ -238,9 +243,10 @@ def get_unique_principals(panopto_content):
     return unique_content_principals
 
 
-def get_unique_external_user_principals(panopto_content):
+def get_unique_external_user_principals(config, panopto_content):
     """
-    Get unique external Panopto principals to avoid duplicate principals on synced item
+    Get unique external Panopto principals to avoid duplicate principals on synced item.
+    Identity provider will be matched with configured id provider instance name.
     """
 
     unique_external_user_principals = []
@@ -248,7 +254,8 @@ def get_unique_external_user_principals(panopto_content):
     for p in panopto_content['VideoContent']['Principals']:
         if (p not in unique_external_user_principals and
                 p.get('Username') and p.get('Email') and
-                p.get('IdentityProvider') and p.get('IdentityProvider') != 'Panopto'):
+                p.get('IdentityProvider') and
+                p.get('IdentityProvider').lower() == config.panopto_id_provider_instance_name.lower()):
 
             unique_external_user_principals.append(p)
 
@@ -268,13 +275,13 @@ def is_public_or_all_users_principals(panopto_content):
     )
 
 
-def is_user_principals(panopto_content):
+def is_user_principals(config, panopto_content):
     """
     Check is session contains user non Panopto permission
     Returns: True or False
     """
 
-    return bool(get_unique_external_user_principals(panopto_content))
+    return bool(get_unique_external_user_principals(config, panopto_content))
 
 
 def set_principals_to_all(config, target_content):
@@ -296,24 +303,24 @@ def set_principals_to_user(config, panopto_content, target_content):
 
     target_content["acl"] = []
 
-    for principal in get_unique_external_user_principals(panopto_content):
+    for principal in get_unique_external_user_principals(config, panopto_content):
 
-        principal_user_email = principal.get("Email")
+        panopto_username = get_panopto_username(principal)
         user_id = None
 
         # Try to get user id from users dictionary
-        if principal_user_email in users:
-            user_id = users.get(principal_user_email)
+        if panopto_username in users:
+            user_id = users.get(panopto_username)
         # If user doesn't exist in dictionary, try to get from AAD calling API
         else:
             # Get user from AAD
-            aad_user_info = get_aad_user_info(config, principal)
+            aad_user_info = get_aad_user_info(config, panopto_username)
 
             if aad_user_info:
                 user_id = aad_user_info["id"]
 
             # Add user to list to prevent further API calls for the same user
-            users[principal_user_email] = user_id
+            users[panopto_username] = user_id
 
         if user_id:
             acl = {
@@ -324,11 +331,25 @@ def set_principals_to_user(config, panopto_content, target_content):
             target_content["acl"].append(acl)
 
 
-def get_aad_user_info(config, principal):
+def get_panopto_username(principal):
+    """
+    Get Panopto username from principal
+    """
+
+    panopto_username = principal.get("Username")
+    if "\\" in panopto_username:
+        panopto_username = panopto_username.split("\\")[1]
+
+    return panopto_username
+
+
+def get_aad_user_info(config, panopto_username):
     """
     Get user info from azure active directory by email
     Returns: If found returns json response, else returns None
     """
+
+    aad_user_info = None
 
     # Get token
     token = get_access_token(config)
@@ -338,17 +359,57 @@ def get_aad_user_info(config, principal):
         'Authorization': f'Bearer {token}'
     }
 
-    url = "https://graph.microsoft.com/v1.0/users/{0}".format(
-        principal.get("Email"))
+    # Set filter parameter to get azure AD user by userPrincipalName or mail
+    params = {
+        '$filter': f"{config.panopto_username_mapping} eq '{panopto_username}'"
+    }
 
-    response = requests.get(url, headers=headers)
+    url = "https://graph.microsoft.com/v1.0/users"
+
+    response = requests.get(url, headers=headers, params=params)
 
     if response.status_code == 200:
-        return response.json()
+        response_value = response.json().get("value")
+        if response_value:
+            # Filtered response returns list of values
+            # but if we filter by userPrincipalName or mail
+            # only one value can be returned, so we will take the first one
+            aad_user_info = response_value[0]
+    else:
+        LOG.warn("Unable to get aad user's info by: {0}. Response: {1}".format(panopto_username, response.json()))
 
-    LOG.warn("Unable to get user's info by email: {0}. Response: {1}".format(principal.get("Email"), response.json()))
+    return aad_user_info
 
-    return None
+
+def validate_configuration(config):
+    """
+    Validate microsoft_graph.yaml configuration file
+    """
+
+    # Validate identity provider instance name - Must be set
+    if not bool(config.panopto_id_provider_instance_name):
+        raise CustomExceptions.ConfigurationError(
+            """
+            Configuration Error!
+            Panopto identity provider instance name is not set!
+            Please update your configuration file and set Panopto identity provider instance name
+            (panopto_id_provider_instance_name) that will be used for matching users with target Tenant.
+            """
+        )
+
+    # Validate username mapping attribute value - Must contains valid value
+    username_mapping_attribute = config.panopto_username_mapping
+    username_mapping_enum_values = set(item.value for item in UsernameMapping)
+
+    if username_mapping_attribute not in username_mapping_enum_values:
+        raise CustomExceptions.ConfigurationError(
+            """
+            Configuration Error!
+            Panopto username mapping attribute value '{0}' is not valid!
+            Please update your configuration file and set Panopto username mapping
+            (panopto_username_mapping) with valid value: 'userPrincipalName' or 'mail' (Case sensitive).
+            """.format(username_mapping_attribute)
+        )
 
 
 def ensure_connection_availability(config):

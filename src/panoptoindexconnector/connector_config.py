@@ -89,6 +89,14 @@ class ConnectorConfig:
         return self._yaml_config['panopto_site_address'].rstrip('/').rstrip('.')
 
     @property
+    def panopto_username_mapping(self):
+        return self._yaml_config['panopto_username_mapping']
+
+    @property
+    def panopto_id_provider_instance_name(self):
+        return self._yaml_config['panopto_id_provider_instance_name']
+
+    @property
     def polling_frequency(self):
         return timedelta(seconds=self._yaml_config.get('polling_seconds', 3600))
 

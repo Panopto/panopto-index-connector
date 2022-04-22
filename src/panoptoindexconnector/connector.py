@@ -335,7 +335,7 @@ def sync(config, last_update_time):
     except requests.exceptions.HTTPError as ex:
         LOG.exception('Received error response %s | %s', ex.response.status_code, ex.response.text)
         exception = ex
-    except CustomExceptions.QuotaLimitExceededError as ex:
+    except (CustomExceptions.ConfigurationError, CustomExceptions.QuotaLimitExceededError) as ex:
         # No need to log here since it will be logged in caller method ("run" method)
         exception = ex
     except Exception as ex:  # pylint: disable=broad-except
