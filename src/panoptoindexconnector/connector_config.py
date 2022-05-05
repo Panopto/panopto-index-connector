@@ -93,6 +93,10 @@ class ConnectorConfig:
         return self._yaml_config['panopto_username_mapping']
 
     @property
+    def panopto_user_group_mapping(self):
+        return self._yaml_config['panopto_user_group_mapping']
+
+    @property
     def panopto_id_provider_instance_name(self):
         return self._yaml_config['panopto_id_provider_instance_name']
 

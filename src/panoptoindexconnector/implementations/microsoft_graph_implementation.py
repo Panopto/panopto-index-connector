@@ -16,7 +16,7 @@ import msal
 
 # Local
 from panoptoindexconnector.custom_exceptions import CustomExceptions
-from panoptoindexconnector.enums import UsernameMapping
+from panoptoindexconnector.enums import UserGroupMapping, UsernameMapping
 
 # Global constants
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -26,6 +26,9 @@ TOKEN_CACHE = os.path.join(APP_TEMP_DIR, 'token_cache.bin')
 
 # Stored users to prevent unnecessary API calls to get id
 users = {}
+
+# Stored user groups to prevent unnecessary API calls to get id
+user_groups = {}
 
 #########################################################################
 #
@@ -145,6 +148,9 @@ def initialize(config):
         # Clear users list before each sync attempt to keep up to date AAD users info
         users.clear()
 
+        # Clear user groups list before each sync attempt to keep up to date AAD user groups info
+        user_groups.clear()
+
         # Validate microsoft_graph.yaml configuration file
         validate_configuration(config)
 
@@ -214,19 +220,31 @@ def set_principals(config, panopto_content, target_content):
     Returns: True if any of principals are set, otherwise False
     """
 
+    principals_are_set = False
+
+    has_public_or_all_users_principals = is_public_or_all_users_principals(panopto_content)
+    has_user_principals = is_user_principals(config, panopto_content)
+    has_user_group_principals = is_user_group_principals(config, panopto_content)
+
     if not config.skip_permissions:
-        if is_public_or_all_users_principals(panopto_content):
+        # Set public or all users grant principals if exist
+        if has_public_or_all_users_principals:
             set_principals_to_all(config, target_content)
-        elif is_user_principals(config, panopto_content):
-            set_principals_to_user(config, panopto_content, target_content)
+        # Set user and/or user group grant principals if exist
+        elif has_user_principals or has_user_group_principals:
+            if has_user_principals:
+                set_principals_to_user(config, panopto_content, target_content)
+            if has_user_group_principals:
+                set_principals_to_user_group(config, panopto_content, target_content)
     else:
         set_principals_to_all(config, target_content)
 
-    if not target_content.get("acl"):
+    if target_content.get("acl"):
+        principals_are_set = True
+    else:
         LOG.warn("Target content will be skipped to push to target since none of principals have applied!")
-        return False
 
-    return True
+    return principals_are_set
 
 
 def get_unique_principals(panopto_content):
@@ -262,6 +280,26 @@ def get_unique_external_user_principals(config, panopto_content):
     return unique_external_user_principals
 
 
+def get_unique_external_user_group_principals(config, panopto_content):
+    """
+    Get unique external Panopto user group principals to avoid duplicate principals on synced item.
+    Identity provider will be matched with configured id provider instance name.
+    """
+
+    unique_external_user_group_principals = []
+
+    for p in panopto_content['VideoContent']['Principals']:
+        if (p not in unique_external_user_group_principals and
+                p.get('Groupname') and
+                p.get('GroupExternalIds') and
+                p.get('IdentityProvider') and
+                p.get('IdentityProvider').lower() == config.panopto_id_provider_instance_name.lower()):
+
+            unique_external_user_group_principals.append(p)
+
+    return unique_external_user_group_principals
+
+
 def is_public_or_all_users_principals(panopto_content):
     """
     Check if session contains Public or All Users group permission
@@ -282,6 +320,15 @@ def is_user_principals(config, panopto_content):
     """
 
     return bool(get_unique_external_user_principals(config, panopto_content))
+
+
+def is_user_group_principals(config, panopto_content):
+    """
+    Check is session contains user group permissions
+    Returns: True or False
+    """
+
+    return bool(get_unique_external_user_group_principals(config, panopto_content))
 
 
 def set_principals_to_all(config, target_content):
@@ -329,6 +376,44 @@ def set_principals_to_user(config, panopto_content, target_content):
                 "accessType": "grant"
             }
             target_content["acl"].append(acl)
+
+
+def set_principals_to_user_group(config, panopto_content, target_content):
+    """
+    Set session permission to user group
+    """
+
+    target_content["acl"] = []
+
+    for principal in get_unique_external_user_group_principals(config, panopto_content):
+
+        panopto_group_external_ids = principal.get("GroupExternalIds")
+
+        for panopto_user_group_identifier in panopto_group_external_ids:
+
+            group_id = None
+
+            # Try to get user group id from user_groups list
+            if panopto_user_group_identifier in user_groups:
+                group_id = user_groups.get(panopto_user_group_identifier)
+            # If user group doesn't exist in list, try to get from AAD calling API
+            else:
+                # Get user from AAD
+                aad_user_group_info = get_aad_user_group_info(config, panopto_user_group_identifier)
+
+                if aad_user_group_info:
+                    group_id = aad_user_group_info["id"]
+
+                # Add user group to list to prevent further API calls for the same user
+                user_groups[panopto_user_group_identifier] = group_id
+
+            if group_id:
+                acl = {
+                    "type": "group",
+                    "value": group_id,
+                    "accessType": "grant"
+                }
+                target_content["acl"].append(acl)
 
 
 def get_panopto_username(principal):
@@ -381,6 +466,46 @@ def get_aad_user_info(config, panopto_username):
     return aad_user_info
 
 
+def get_aad_user_group_info(config, panopto_user_group_identifier):
+    """
+    Get user group info from azure active directory by Panopto user group identifier
+    Returns: If found returns json response, else returns None
+    """
+
+    aad_user_group_info = None
+
+    # Get token
+    token = get_access_token(config)
+
+    # Set headers
+    headers = {
+        'Authorization': f'Bearer {token}'
+    }
+
+    # Set filter parameter to get azure AD user by 'id' or 'onPremisesSamAccountName'
+    params = {
+        '$filter': f"{config.panopto_user_group_mapping} eq '{panopto_user_group_identifier}'"
+    }
+
+    url = "https://graph.microsoft.com/v1.0/groups"
+
+    response = requests.get(url, headers=headers, params=params)
+
+    if response.status_code == 200:
+        response_value = response.json().get("value")
+        if response_value:
+            # Filtered response returns list of values
+            # but if we filter by id or onPremisesSamAccountName
+            # only one value can be returned, so we will take the first one
+            aad_user_group_info = response_value[0]
+    else:
+        LOG.warn(
+            "Unable to get aad user group's info by: {0} eq {1}. Response: {2}."
+            .format(config.panopto_user_group_mapping, panopto_user_group_identifier, response.json()))
+
+    return aad_user_group_info
+
+
 def validate_configuration(config):
     """
     Validate microsoft_graph.yaml configuration file
@@ -409,6 +534,20 @@ def validate_configuration(config):
             Please update your configuration file and set Panopto username mapping
             (panopto_username_mapping) with valid value: 'userPrincipalName' or 'mail' (Case sensitive).
             """.format(username_mapping_attribute)
+        )
+
+    # Validate username mapping attribute value - Must contains valid value
+    user_group_mapping_attribute = config.panopto_user_group_mapping
+    user_group_mapping_enum_values = set(item.value for item in UserGroupMapping)
+
+    if user_group_mapping_attribute not in user_group_mapping_enum_values:
+        raise CustomExceptions.ConfigurationError(
+            """
+            Configuration Error!
+            Panopto user group mapping attribute value '{0}' is not valid!
+            Please update your configuration file and set Panopto user group mapping
+            (panopto_user_group_mapping) with valid value: 'id' or 'onPremisesSamAccountName' (Case sensitive).
+            """.format(user_group_mapping_attribute)
         )
 
 
