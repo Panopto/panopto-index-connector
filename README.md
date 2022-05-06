@@ -337,5 +337,5 @@ The third implements deleting content by ID, and is similar, but contains only t
 
 ## Running the Connector
 
-Once you are set up, run the connector to test by running `panopto-index-connector -c <path-to-config>`. When you have run that enough to be sure it is working, we recommend installing it as a service or daemon on an isolated production machine. Note that the program is platform independent, and you may host it on any linux or windows machine with python 3 you install it on.
+Once you are set up, run the connector to test by running `panopto-index-connector -c <path-to-config>`. When you have run that enough to be sure it is working, we recommend installing it as a service or daemon on an isolated production machine. Note that you may host program on any windows machine with python 3 you install it on.
 
