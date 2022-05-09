@@ -39,6 +39,7 @@ pyreadline==2.1           # via panoptoindexconnector
 pytest-cov==2.10.1        # via -r requirements.in
 pytest-runner==5.2        # via -r requirements.in
 pytest==6.2.1             # via -r requirements.in, pytest-cov
+pywin32==303              # via -r requirements.in
 requests==2.25.1          # via msal, panoptoindexconnector
 ruamel.yaml==0.15.50      # via panoptoindexconnector
 six==1.15.0               # via astroid, pip-tools

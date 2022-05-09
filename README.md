@@ -335,7 +335,6 @@ The second function implements pushing content to your custom target. It contain
 
 The third implements deleting content by ID, and is similar, but contains only the video id instead of the full content.
 
-## Running the Connector
+## Taking it to production
 
-Once you are set up, run the connector to test by running `panopto-index-connector -c <path-to-config>`. When you have run that enough to be sure it is working, we recommend installing it as a service or daemon on an isolated production machine. Note that the program is platform independent, and you may host it on any linux or windows machine with python 3 you install it on.
-
+To deploy to production, we recommend installing the connector as a service on an isolated production machine. The binary panopto-connector.exe may be run on any windows machine. If you install from source, the connector supports Python 3.7+ on windows.
