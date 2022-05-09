@@ -280,24 +280,30 @@ def get_unique_external_user_principals(config, panopto_content):
     return unique_external_user_principals
 
 
-def get_unique_external_user_group_principals(config, panopto_content):
+def get_unique_user_group_external_contexts(config, panopto_content):
     """
-    Get unique external Panopto user group principals to avoid duplicate principals on synced item.
-    Identity provider will be matched with configured id provider instance name.
+    Get unique user group external contexts to avoid duplicate principals on synced item.
+    Identity provider will be matched with configured identity provider instance name.
     """
 
-    unique_external_user_group_principals = []
+    unique_user_group_external_contexts = []
 
-    for p in panopto_content['VideoContent']['Principals']:
-        if (p not in unique_external_user_group_principals and
-                p.get('Groupname') and
-                p.get('GroupExternalIds') and
-                p.get('IdentityProvider') and
-                p.get('IdentityProvider').lower() == config.panopto_id_provider_instance_name.lower()):
+    # Get user group principals that contains ExternalContexts
+    user_group_principals = [
+        p for p in panopto_content['VideoContent']['Principals']
+        if p.get('Groupname') and p.get('ExternalContexts')
+    ]
 
-            unique_external_user_group_principals.append(p)
+    for p in user_group_principals:
+        for ec in p.get('ExternalContexts'):
+            if (ec not in unique_user_group_external_contexts and
+                ec.get("ExternalId") and
+                ec.get("IdentityProviderName") and
+                ec.get("IdentityProviderName").lower() == config.panopto_id_provider_instance_name.lower()):
 
-    return unique_external_user_group_principals
+                unique_user_group_external_contexts.append(ec)
+
+    return unique_user_group_external_contexts
 
 
 def is_public_or_all_users_principals(panopto_content):
@@ -328,7 +334,7 @@ def is_user_group_principals(config, panopto_content):
     Returns: True or False
     """
 
-    return bool(get_unique_external_user_group_principals(config, panopto_content))
+    return bool(get_unique_user_group_external_contexts(config, panopto_content))
 
 
 def set_principals_to_all(config, target_content):
@@ -385,35 +391,32 @@ def set_principals_to_user_group(config, panopto_content, target_content):
 
     target_content["acl"] = []
 
-    for principal in get_unique_external_user_group_principals(config, panopto_content):
+    for ec in get_unique_user_group_external_contexts(config, panopto_content):
 
-        panopto_group_external_ids = principal.get("GroupExternalIds")
+        panopto_user_group_identifier = ec.get("ExternalId")
+        aad_group_id = None
 
-        for panopto_user_group_identifier in panopto_group_external_ids:
+        # Try to get user group id from user_groups list
+        if panopto_user_group_identifier in user_groups:
+            aad_group_id = user_groups.get(panopto_user_group_identifier)
+        # If user group doesn't exist in list, try to get from AAD calling API
+        else:
+            # Get user group from AAD
+            aad_user_group_info = get_aad_user_group_info(config, panopto_user_group_identifier)
 
-            group_id = None
+            if aad_user_group_info:
+                aad_group_id = aad_user_group_info["id"]
 
-            # Try to get user group id from user_groups list
-            if panopto_user_group_identifier in user_groups:
-                group_id = user_groups.get(panopto_user_group_identifier)
-            # If user group doesn't exist in list, try to get from AAD calling API
-            else:
-                # Get user from AAD
-                aad_user_group_info = get_aad_user_group_info(config, panopto_user_group_identifier)
+            # Add user group to list to prevent further API calls for the same user group
+            user_groups[panopto_user_group_identifier] = aad_group_id
 
-                if aad_user_group_info:
-                    group_id = aad_user_group_info["id"]
-
-                # Add user group to list to prevent further API calls for the same user
-                user_groups[panopto_user_group_identifier] = group_id
-
-            if group_id:
-                acl = {
-                    "type": "group",
-                    "value": group_id,
-                    "accessType": "grant"
-                }
-                target_content["acl"].append(acl)
+        if aad_group_id:
+            acl = {
+                "type": "group",
+                "value": aad_group_id,
+                "accessType": "grant"
+            }
+            target_content["acl"].append(acl)
 
 
 def get_panopto_username(principal):
