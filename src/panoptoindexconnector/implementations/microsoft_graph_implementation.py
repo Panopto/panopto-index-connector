@@ -25,10 +25,10 @@ APP_TEMP_DIR = str.lower(DIR).replace("panoptoindexconnector\implementations", "
 TOKEN_CACHE = os.path.join(APP_TEMP_DIR, 'token_cache.bin')
 
 # Stored users to prevent unnecessary API calls to get id
-users = {}
+USERS = {}
 
 # Stored user groups to prevent unnecessary API calls to get id
-user_groups = {}
+USER_GROUPS = {}
 
 #########################################################################
 #
@@ -146,10 +146,10 @@ def initialize(config):
 
     try:
         # Clear users list before each sync attempt to keep up to date AAD users info
-        users.clear()
+        USERS.clear()
 
         # Clear user groups list before each sync attempt to keep up to date AAD user groups info
-        user_groups.clear()
+        USER_GROUPS.clear()
 
         # Validate microsoft_graph.yaml configuration file
         validate_configuration(config)
@@ -222,19 +222,19 @@ def set_principals(config, panopto_content, target_content):
 
     principals_are_set = False
 
-    has_public_or_all_users_principals = is_public_or_all_users_principals(panopto_content)
-    has_user_principals = is_user_principals(config, panopto_content)
-    has_user_group_principals = is_user_group_principals(config, panopto_content)
+    set_public_or_all_users_principals = has_public_or_all_users_principals(panopto_content)
+    set_user_principals = has_user_principals(config, panopto_content)
+    set_user_group_principals = has_user_group_principals(config, panopto_content)
 
     if not config.skip_permissions:
         # Set public or all users grant principals if exist
-        if has_public_or_all_users_principals:
+        if set_public_or_all_users_principals:
             set_principals_to_all(config, target_content)
         # Set user and/or user group grant principals if exist
-        elif has_user_principals or has_user_group_principals:
-            if has_user_principals:
+        elif set_user_principals or set_user_group_principals:
+            if set_user_principals:
                 set_principals_to_user(config, panopto_content, target_content)
-            if has_user_group_principals:
+            if set_user_group_principals:
                 set_principals_to_user_group(config, panopto_content, target_content)
     else:
         set_principals_to_all(config, target_content)
@@ -306,7 +306,7 @@ def get_unique_user_group_external_contexts(config, panopto_content):
     return unique_user_group_external_contexts
 
 
-def is_public_or_all_users_principals(panopto_content):
+def has_public_or_all_users_principals(panopto_content):
     """
     Check if session contains Public or All Users group permission
     Returns: True or False
@@ -319,7 +319,7 @@ def is_public_or_all_users_principals(panopto_content):
     )
 
 
-def is_user_principals(config, panopto_content):
+def has_user_principals(config, panopto_content):
     """
     Check is session contains user non Panopto permission
     Returns: True or False
@@ -328,7 +328,7 @@ def is_user_principals(config, panopto_content):
     return bool(get_unique_external_user_principals(config, panopto_content))
 
 
-def is_user_group_principals(config, panopto_content):
+def has_user_group_principals(config, panopto_content):
     """
     Check is session contains user group permissions
     Returns: True or False
@@ -362,8 +362,8 @@ def set_principals_to_user(config, panopto_content, target_content):
         user_id = None
 
         # Try to get user id from users dictionary
-        if panopto_username in users:
-            user_id = users.get(panopto_username)
+        if panopto_username in USERS:
+            user_id = USERS.get(panopto_username)
         # If user doesn't exist in dictionary, try to get from AAD calling API
         else:
             # Get user from AAD
@@ -373,7 +373,7 @@ def set_principals_to_user(config, panopto_content, target_content):
                 user_id = aad_user_info["id"]
 
             # Add user to list to prevent further API calls for the same user
-            users[panopto_username] = user_id
+            USERS[panopto_username] = user_id
 
         if user_id:
             acl = {
@@ -393,22 +393,27 @@ def set_principals_to_user_group(config, panopto_content, target_content):
 
     for ec in get_unique_user_group_external_contexts(config, panopto_content):
 
+        # Set External Id from Group External Context
         panopto_user_group_identifier = ec.get("ExternalId")
+
+        # Azure Active Directory Group Id
         aad_group_id = None
 
         # Try to get user group id from user_groups list
-        if panopto_user_group_identifier in user_groups:
-            aad_group_id = user_groups.get(panopto_user_group_identifier)
+        if panopto_user_group_identifier in USER_GROUPS:
+            aad_group_id = USER_GROUPS.get(panopto_user_group_identifier)
         # If user group doesn't exist in list, try to get from AAD calling API
         else:
-            # Get user group from AAD
+            # Get user group from Azure Active Directory
             aad_user_group_info = get_aad_user_group_info(config, panopto_user_group_identifier)
 
+            # If Azure Active Directory group has been retrieved by group identifier,
+            # set Group Id and use it to grant group permission
             if aad_user_group_info:
                 aad_group_id = aad_user_group_info["id"]
 
-            # Add user group to list to prevent further API calls for the same user group
-            user_groups[panopto_user_group_identifier] = aad_group_id
+            # Add user group to USER_GROUPS list to prevent further API calls for the same user group
+            USER_GROUPS[panopto_user_group_identifier] = aad_group_id
 
         if aad_group_id:
             acl = {
