@@ -22,6 +22,12 @@ panopto_id_provider_instance_name: ""
 # Valid values are: userPrincipalName or mail (Case sensitive)
 panopto_username_mapping: userPrincipalName
 
+# The attribute from SAML Azure AD that will be used for Panopto user group mapping.
+# Valid values are (Case sensitive):
+#   'id'- Azure AD group ObjectId or
+#   'onPremisesSamAccountName'- sAMAccountName
+panopto_user_group_mapping: id
+
 # Your index integration target endpoint
 target_address: https://graph.microsoft.com/v1.0/external/connections
 
