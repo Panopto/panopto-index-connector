@@ -54,8 +54,11 @@ def convert_to_target(panopto_content, config):
     # Set acl (account controll list)
     principals_are_set = set_principals(config, panopto_content, target_content)
 
-    # If none of principals are set to content, set skip_sync property to skip pushing content to target
+    # If none of principals are set to content
+    #   1. If content is already synced, remove it from target since nobody should be able to get it in search result
+    #   2. Set skip_sync property to skip pushing content to target
     if not principals_are_set:
+        delete_content_from_target_if_exists(target_content, config)
         target_content["skip_sync"] = True
 
     LOG.debug('Converted document is %s', json.dumps(target_content, indent=2))
@@ -69,12 +72,12 @@ def push_to_target(target_content, config):
     """
 
     if target_content.get("skip_sync"):
-        LOG.warn("Content has been skipped for sync to target")
+        LOG.warn("Content has been skipped for sync to target!")
         return
 
     content_id = target_content.get("id")
 
-    LOG.info("Pushing content (%s) to target", content_id)
+    LOG.info("Pushing content (%s) to target...", content_id)
 
     # Get token
     access_token = get_access_token(config)
@@ -108,12 +111,12 @@ def push_to_target(target_content, config):
         log_error_for_not_pushed_content(content_id, target_content, response.text)
 
 
-def delete_from_target(video_id, config):
+def delete_from_target(content_id, config):
     """
     Delete Panopto content from the target
     """
 
-    LOG.info(f"Deleting video from target by id: {video_id}")
+    LOG.info(f"Deleting content from target by id: {content_id}...")
 
     # Get token
     access_token = get_access_token(config)
@@ -125,14 +128,14 @@ def delete_from_target(video_id, config):
 
     target_address = config.target_address
     connection_id = config.target_connection["id"]
-    url = f"{target_address}/{connection_id}/items/{video_id}"
+    url = f"{target_address}/{connection_id}/items/{content_id}"
 
     response = requests.delete(url, headers=headers)
 
     if response.status_code == 200:
-        LOG.info(f"Video ({video_id}) has been deleted from target!")
+        LOG.info(f"Content ({content_id}) has been deleted from target!")
     elif response.status_code == 404:
-        LOG.info(f"Video ({video_id}) not found to be delete from target!")
+        LOG.info(f"Content ({content_id}) not found to be delete from target!")
 
 
 #
@@ -242,7 +245,7 @@ def set_principals(config, panopto_content, target_content):
     if target_content.get("acl"):
         principals_are_set = True
     else:
-        LOG.warn("Target content will be skipped to push to target since none of principals have applied!")
+        LOG.warn("Content will be skipped to push to target since none of principals have applied!")
 
     return principals_are_set
 
@@ -840,3 +843,51 @@ def log_error_for_not_pushed_content(content_id, target_content, response_text):
 
     LOG.error(f"Content ({content_id}) has NOT been pushed to target! " +
               f"Target Content: {target_content}. Response: {response_text}")
+
+
+def delete_content_from_target_if_exists(target_content, config):
+    """
+    Delete content from target if exists (already synced)
+    """
+
+    content_id = target_content.get("id")
+
+    LOG.info(f"Checking if content ({content_id}) is already synced in order to delete from target "
+              "since none of principals are applied to content...")
+
+    content_from_target = get_content_from_target(content_id, config)
+
+    if content_from_target:
+        LOG.info(f"Content ({content_id}) is already synced and we will proceed with deleting from target!")
+        delete_from_target(content_id, config)
+
+
+def get_content_from_target(content_id, config):
+    """
+    Get content from target
+    """
+
+    LOG.info(f"Getting content from target by id: {content_id}...")
+
+    content_from_target = None
+
+    # Get token
+    access_token = get_access_token(config)
+
+    # Set headers
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    target_address = config.target_address
+    connection_id = config.target_connection["id"]
+    url = f"{target_address}/{connection_id}/items/{content_id}"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        content_from_target = response.json()
+    elif response.status_code == 404:
+        LOG.info(f"Content ({content_id}) not found from target!")
+
+    return content_from_target
