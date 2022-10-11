@@ -18,6 +18,10 @@ panopto_oauth_credentials:
 # for matching users with target Tenant
 panopto_id_provider_instance_name: ""
 
+# Indicates if your Panopto identity provider is unified
+# Valid values are: true or false
+panopto_id_provider_is_unified: false
+
 # The attribute from SAML Azure AD that will be used for Panopto username.
 # Valid values are: userPrincipalName or mail (Case sensitive)
 panopto_username_mapping: userPrincipalName
