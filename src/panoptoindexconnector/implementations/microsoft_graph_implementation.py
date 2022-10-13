@@ -235,6 +235,8 @@ def set_principals(config, panopto_content, target_content):
             set_principals_to_all(config, target_content)
         # Set user and/or user group grant principals if exist
         elif set_user_principals or set_user_group_principals:
+            target_content["acl"] = []
+
             if set_user_principals:
                 set_principals_to_user(config, panopto_content, target_content)
             if set_user_group_principals:
@@ -274,9 +276,10 @@ def get_unique_external_user_principals(config, panopto_content):
 
     for p in panopto_content['VideoContent']['Principals']:
         if (p not in unique_external_user_principals and
-                p.get('Username') and p.get('Email') and
+                p.get('Username') and
                 p.get('IdentityProvider') and
-                p.get('IdentityProvider').lower() == config.panopto_id_provider_instance_name.lower()):
+                p.get('IdentityProvider').lower() ==
+                ("unified" if config.panopto_id_provider_is_unified else config.panopto_id_provider_instance_name.lower())):
 
             unique_external_user_principals.append(p)
 
@@ -357,8 +360,6 @@ def set_principals_to_user(config, panopto_content, target_content):
     Set session permission to user
     """
 
-    target_content["acl"] = []
-
     for principal in get_unique_external_user_principals(config, panopto_content):
 
         panopto_username = get_panopto_username(principal)
@@ -391,8 +392,6 @@ def set_principals_to_user_group(config, panopto_content, target_content):
     """
     Set session permission to user group
     """
-
-    target_content["acl"] = []
 
     for ec in get_unique_user_group_external_contexts(config, panopto_content):
 
