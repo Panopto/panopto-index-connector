@@ -61,7 +61,10 @@ To install the Panopto Index Connector, follow these steps
 
 ## Setup API Access
 
-Configure a panopto user, e.g. "connector", which will be used for access to the API. Grant the user an API key if you know how to do so. The user does not need any other permissions. Contact Panopto Support to have them enable your API access and authorize this user. We will be removing the need to contact Panopto Support in a future release.
+Configure a panopto user, e.g. "connector", which will be used for access to the API. Grant the user a user based API key. Grant the user permission to connect to the search index by navigating to Settings > Search-Engine Settings > User to Access Index Connector API. Add the user name you just configured (e.g. "connector").
+
+![image](https://user-images.githubusercontent.com/4721718/197884016-bfdf1713-a29e-4d74-8aed-629658a2eb3a.png)
+
 
 ## The Panopto APIs
 
